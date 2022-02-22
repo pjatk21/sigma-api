@@ -1,0 +1,30 @@
+[package]
+name = "pjatk-schedule"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thirtyfour = { version = "0.28.1", features = [
+    "reqwest-rustls-tls-webpki-roots",
+] }
+tokio = { version = "1.15.0", features = [
+    "rt-multi-thread",
+    "net",
+    "time",
+    "rt",
+    "parking_lot",
+] }
+parking_lot = { version = "0.12.0", features = ["nightly"] }
+kuchiki = "0.8.1"
+mimalloc = "0.1.28"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = "1.0.79"
+mongodb = "2.1.0"
+dotenv = "0.15.0"
+poem = "1.2.59"
+poem-openapi = { version = "1.2.59", features = ["swagger-ui", "chrono"] }
+chrono = { version = "0.4.19", features = ["serde"] }
+futures = "0.3.21"
+timetable = { path = "../timetable" }
