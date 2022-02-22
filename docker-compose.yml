@@ -31,7 +31,7 @@ services:
       - .env
   pjatk-schedule:
     build: 
-      dockerfile: pjatk-schedule\Dockerfile
+      dockerfile: pjatk-schedule/Dockerfile
       context: .
     ports:
       - 3002:3002
