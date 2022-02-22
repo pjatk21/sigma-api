@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 async fn connect_db() -> Result<Collection<TimeTableEntry>, Box<dyn Error>> {
     let url = format!(
-        "mongodb://{0}:{1}@localhost:27017",
+        "mongodb://{0}:{1}@lmongodb:27017",
         std::env::var("MONGO_INITDB_ROOT_USERNAME")?,
         std::env::var("MONGO_INITDB_ROOT_PASSWORD")?
     );

@@ -53,7 +53,7 @@ impl Api {
 
 async fn connect_db() -> Result<Client, Box<dyn Error>> {
     let url = format!(
-        "mongodb://{0}:{1}@localhost:27017",
+        "mongodb://{0}:{1}@mongodb:27017",
         std::env::var("MONGO_INITDB_ROOT_USERNAME")?,
         std::env::var("MONGO_INITDB_ROOT_PASSWORD")?
     );
