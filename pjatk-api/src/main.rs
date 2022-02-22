@@ -15,7 +15,7 @@ use std::ops::Deref;
 async fn main() -> Result<(), Box<dyn Error>> {
     let coll_db = connect_db().await?;
     let api_service =
-        OpenApiService::new(Api, "PJATK Schedule API", "0.1").server("http://sigmaapi.justsomebody.dev/api");
+        OpenApiService::new(Api, "PJATK Schedule API", "0.1").server("https://sigmaapi.justsomebody.dev:3001/api");
     let docs = api_service.swagger_ui();
     let open_api_specs = api_service.spec_endpoint();
     let app = Route::new()
