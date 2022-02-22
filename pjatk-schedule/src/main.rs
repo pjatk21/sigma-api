@@ -14,15 +14,21 @@ use thirtyfour::{error::WebDriverError, prelude::*, PageLoadStrategy};
 async fn main() -> Result<(), Box<dyn Error>> {
     let coll_db = connect_db().await?;
     let client = Arc::new(init_pjatk_client().await?);
-    let api_service =
-        OpenApiService::new(Api, "pjatk_schedule", "0.1").server("http://127.0.0.1:3002/api");
+    let port = std::env::var("PJATK_SCRAPPER_PORT")?;
+    let server_url = format!(
+        "{0}:{1}/api",
+        std::env::var("PJATK_API_URL_WITH_PROTOCOL")?,
+        port
+    );
+    let api_service = OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.1")
+        .server(server_url);
     let docs = api_service.swagger_ui();
     let app = Route::new()
         .nest("/api", api_service)
         .nest("/", docs)
         .data(coll_db.clone())
         .data(client.clone());
-    Server::new(TcpListener::bind("0.0.0.0:3002"))
+    Server::new(TcpListener::bind(format!("0.0.0.0:{}",port)))
         .run(app)
         .await?;
     Ok(())
@@ -48,9 +54,11 @@ impl Api {
 
 async fn connect_db() -> Result<Client, Box<dyn Error>> {
     let url = format!(
-        "mongodb://{0}:{1}@mongodb:27017",
+        "mongodb://{0}:{1}@{2}:{3}",
         std::env::var("MONGO_INITDB_ROOT_USERNAME")?,
-        std::env::var("MONGO_INITDB_ROOT_PASSWORD")?
+        std::env::var("MONGO_INITDB_ROOT_PASSWORD")?,
+        std::env::var("MONGO_HOST")?,
+        std::env::var("MONGO_PORT")?,
     );
     let mut client_options = ClientOptions::parse(url).await.expect("Bad mongo url!");
     client_options.app_name = Some("PJATK Schedule".to_string());
@@ -113,8 +121,8 @@ async fn parse_timetable_day(
         let entry: timetable::TimeTableEntry = tooltip_node.try_into()?;
         let client_db = db_client.clone();
         tokio::spawn(async move {
-            let db = client_db.database("schedule");
-            let timetable: Collection<TimeTableEntry> = db.collection("timetable_entries");
+            let db = client_db.database(&std::env::var("MONGO_INITDB_DATABASE").expect("Missing env: default database"));
+            let timetable: Collection<TimeTableEntry> = db.collection(&std::env::var("MONGO_INITDB_COLLECTION").expect("Missing env: default collection"));
 
             timetable
                 .insert_one(entry, None)

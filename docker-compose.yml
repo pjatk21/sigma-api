@@ -5,13 +5,15 @@ services:
     env_file:
       - .env
     ports:
-      - 27017:27017
+      - ${MONGO_PORT}:${MONGO_PORT}
   database-viewer:
     image: mongo-express
     depends_on:
       - mongodb
     env_file:
       - .env
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}
     ports:
       - "8081:8081"
   geckodriver:
@@ -21,22 +23,25 @@ services:
       MOZ_HEADLESS: 1
     ports:
       - 4444:4444
+    depends_on:
+    - pjatk-scraper
+    restart: unless-stopped
   pjatk-api:
     build:
       dockerfile: pjatk-api/Dockerfile
       context: .
     ports:
-      - 3001:3001
+      - ${PJATK_API_PORT}:${PJATK_API_PORT}
     env_file:
       - .env
-  pjatk-schedule:
+  pjatk-scraper:
     build: 
       dockerfile: pjatk-schedule/Dockerfile
       context: .
     ports:
-      - 3002:3002
+      - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}
     env_file:
       - .env
-    depends_on:
-      - geckodriver
+    
+    restart: unless-stopped
   
