@@ -1,3 +1,5 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style)]
+
 #[allow(unused_imports)]
 use futures::stream::TryStreamExt;
 

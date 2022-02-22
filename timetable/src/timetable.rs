@@ -1,3 +1,5 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style)]
+
 use std::{error::Error, fmt::Display};
 
 use chrono::{DateTime, Utc};

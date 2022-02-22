@@ -1,3 +1,5 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style)]
+
 use futures::stream::TryStreamExt;
 use mongodb::bson::{Bson, DateTime};
 
