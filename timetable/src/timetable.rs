@@ -2,12 +2,13 @@
 
 use std::{error::Error, fmt::Display};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, Duration};
 use kuchiki::NodeRef;
 use poem_openapi::Object;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Object)]
+#[oai(example = "get_mock_entry")]
 pub struct TimeTableEntry {
     pub(crate) title: Option<String>,
     pub(crate) persons: Vec<String>,
@@ -15,7 +16,7 @@ pub struct TimeTableEntry {
     pub(crate) type_of: String,
     pub(crate) subjects: Vec<String>,
     pub(crate) subject_codes: Vec<String>,
-    pub(crate) groups: Vec<String>,
+    pub(crate) groups: Option<Vec<String>>,
     pub(crate) students_count: Option<String>,
     pub(crate) building: String,
     pub(crate) room: String,
@@ -45,7 +46,7 @@ impl TryFrom<NodeRef> for TimeTableEntry {
                 "#ctl06_OsobaRezerwujacaLabel, #ctl06_DydaktycyLabel",
                 "persons",
             )?,
-            details: get_data_option(&dom,"#ctl06_OpisLabel"),
+            details: get_data_option(&dom, "#ctl06_OpisLabel"),
             type_of: get_data(
                 &dom,
                 "#ctl06_TypRezerwacjiLabel, #ctl06_TypZajecLabel",
@@ -61,11 +62,18 @@ impl TryFrom<NodeRef> for TimeTableEntry {
                 "#ctl06_KodyPrzedmiotowLabel, #ctl06_KodPrzedmiotuLabel",
                 "subject_codes",
             )?,
-            groups: get_multiple_data(
-                &dom,
-                "#ctl06_GrupyStudenckieLabel, #ctl06_GrupyLabel",
-                "groups",
-            )?,
+            groups: {
+                let groups = get_multiple_data(
+                    &dom,
+                    "#ctl06_GrupyStudenckieLabel, #ctl06_GrupyLabel",
+                    "groups",
+                )?;
+                if groups.iter().all(|group| group == "---") {
+                    None
+                } else {
+                    Some(groups)
+                }
+            },
             students_count: get_data_option(&dom, "#ctl06_LiczbaStudentowLabel"),
             building: get_data(&dom, "#ctl06_BudynekLabel", "building")?,
             room: get_data(&dom, "#ctl06_SalaLabel", "room")?,
@@ -76,6 +84,22 @@ impl TryFrom<NodeRef> for TimeTableEntry {
     }
 }
 
+fn get_mock_entry() -> TimeTableEntry {
+    TimeTableEntry {
+        title: Some("Ostatni wykład".to_string()),
+        persons: vec!["Niezgoda Adam".to_string(),"Tomaszewski Michał".to_string()],
+        details: Some("Podsumowanie semestru".to_string()),
+        type_of: "Wykład".to_string(),
+        subjects: vec!["Systemy operacyjne".to_string(),"Programowanie obiektowe i GUI".to_string()],
+        subject_codes: vec!["SOP".to_string(),"GUI".to_string()],
+        groups: Some(vec!["WIs I.2 - 46c".to_string(),"WIS I.2 - 23c".to_string()]),
+        students_count: Some("115 115 ITN".to_string()),
+        building: "B2020".to_string(),
+        room: "B/227".to_string(),
+        datetime_beginning: Utc::now(),
+        datetime_ending: Utc::now() + Duration::hours(2),
+    }
+}
 fn get_data_option(dom: &NodeRef, selector: &'static str) -> Option<String> {
     if let Ok(dom) = dom.select_first(selector) {
         Some(dom.text_contents().trim().to_string())
