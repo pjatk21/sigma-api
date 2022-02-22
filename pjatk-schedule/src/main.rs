@@ -17,18 +17,17 @@ use thirtyfour::{prelude::*, PageLoadStrategy};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    dotenv::dotenv()?;
     let coll_db = connect_db().await?;
     let client = Arc::new(init_pjatk_client().await?);
     let api_service =
-        OpenApiService::new(Api, "pjatk_schedule", "0.1").server("http://127.0.0.1:3001/api");
+        OpenApiService::new(Api, "pjatk_schedule", "0.1").server("http://127.0.0.1:3002/api");
     let docs = api_service.swagger_ui();
     let app = Route::new()
         .nest("/api", api_service)
         .nest("/", docs)
         .data(coll_db.clone())
         .data(client.clone());
-    Server::new(TcpListener::bind("127.0.0.1:3001"))
+    Server::new(TcpListener::bind("127.0.0.1:3002"))
         .run(app)
         .await?;
     Ok(())
@@ -55,8 +54,8 @@ impl Api {
 async fn connect_db() -> Result<Client, Box<dyn Error>> {
     let url = format!(
         "mongodb://{0}:{1}@localhost:27017",
-        dotenv::var("MONGO_INITDB_ROOT_USERNAME")?,
-        dotenv::var("MONGO_INITDB_ROOT_PASSWORD")?
+        std::env::var("MONGO_INITDB_ROOT_USERNAME")?,
+        std::env::var("MONGO_INITDB_ROOT_PASSWORD")?
     );
     let mut client_options = ClientOptions::parse(url).await.expect("Bad mongo url!");
     client_options.app_name = Some("PJATK Schedule".to_string());
@@ -68,7 +67,7 @@ async fn init_pjatk_client() -> Result<WebDriver, Box<dyn Error>> {
     let mut caps = DesiredCapabilities::firefox();
     caps.set_headless()?;
     caps.set_page_load_strategy(PageLoadStrategy::None)?;
-    let client = WebDriver::new("http://localhost:4444", &caps).await?;
+    let client = WebDriver::new("http://geckodriver:4444", &caps).await?;
     client
         .get("https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx")
         .await?;

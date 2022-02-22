@@ -21,14 +21,20 @@ services:
       MOZ_HEADLESS: 1
     ports:
       - 4444:4444
-  # pjatk-api:
-  #   build:
-  #     dockerfile: pjatk-api/Dockerfile
-  #     context: .
-  #   ports:
-  #     - 3000:3001
-  # pjatk-schedule:
-  #   build: .\pjatk-schedule\.
-  #   ports:
-  #     - 3000:3002
+  pjatk-api:
+    build:
+      dockerfile: pjatk-api/Dockerfile
+      context: .
+    ports:
+      - 3001:3001
+    env_file:
+      - .env
+  pjatk-schedule:
+    build: 
+      dockerfile: pjatk-schedule\Dockerfile
+      context: .
+    ports:
+      - 3002:3002
+    env_file:
+      - .env
   

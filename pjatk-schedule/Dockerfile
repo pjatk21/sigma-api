@@ -1,5 +1,8 @@
 FROM rust:slim as chef
 
+RUN rustup toolchain install nightly
+RUN rustup default nightly
+
 RUN apt-get update -y && apt-get install build-essential -y && rm -rf /var/lib/apt/lists/*
 
 RUN cargo install cargo-chef
@@ -26,6 +29,6 @@ WORKDIR /usr/local/bin/
 
 COPY --from=builder builder/target/release/pjatk-schedule /usr/local/bin/
 
-RUN apt-get update -y && apt-get install ca-certificates no-install-recommends -y && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install ca-certificates --no-install-recommends -y && rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["pjatk-schedule"]

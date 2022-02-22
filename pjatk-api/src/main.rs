@@ -18,10 +18,9 @@ use std::ops::Deref;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    dotenv::dotenv()?;
     let coll_db = connect_db().await?;
     let api_service =
-        OpenApiService::new(Api, "PJATK Schedule API", "0.1").server("http://127.0.0.1:3000/api");
+        OpenApiService::new(Api, "PJATK Schedule API", "0.1").server("http://127.0.0.1:3001/api");
     let docs = api_service.swagger_ui();
     let open_api_specs = api_service.spec_endpoint();
     let app = Route::new()
@@ -29,7 +28,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest("/api", api_service)
         .nest("/openapi.json", open_api_specs)
         .data(coll_db.clone());
-    Server::new(TcpListener::bind("127.0.0.1:3000"))
+    Server::new(TcpListener::bind("127.0.0.1:3001"))
         .run(app)
         .await?;
     Ok(())
@@ -37,8 +36,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 async fn connect_db() -> Result<Collection<TimeTableEntry>, Box<dyn Error>> {
     let url = format!(
         "mongodb://{0}:{1}@localhost:27017",
-        dotenv::var("MONGO_INITDB_ROOT_USERNAME")?,
-        dotenv::var("MONGO_INITDB_ROOT_PASSWORD")?
+        std::env::var("MONGO_INITDB_ROOT_USERNAME")?,
+        std::env::var("MONGO_INITDB_ROOT_PASSWORD")?
     );
     let mut client_options = ClientOptions::parse(url).await.expect("Bad mongo url!");
     client_options.app_name = Some("PJATK Schedule".to_string());
