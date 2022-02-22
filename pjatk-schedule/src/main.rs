@@ -102,11 +102,6 @@ async fn parse_timetable_day(
                 _ => eprintln!("Unexpected error: {:#?}", err),
             }
         }
-        web_driver
-            .action_chain()
-            .move_to_element_center(element)
-            .perform()
-            .await?;
         let tooltip_element = web_driver
             .query(By::Id("RadToolTipManager1RTMPanel"))
             .wait(Duration::MAX, Duration::from_nanos(125))
