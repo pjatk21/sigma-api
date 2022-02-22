@@ -1,8 +1,3 @@
-use mimalloc::MiMalloc;
-
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
-
 #[allow(unused_imports)]
 use futures::stream::TryStreamExt;
 
@@ -27,7 +22,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest("/", docs)
         .data(coll_db.clone())
         .data(client.clone());
-    Server::new(TcpListener::bind("127.0.0.1:3002"))
+    Server::new(TcpListener::bind("0.0.0.0:3002"))
         .run(app)
         .await?;
     Ok(())

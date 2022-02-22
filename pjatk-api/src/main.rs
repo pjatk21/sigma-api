@@ -1,8 +1,3 @@
-use mimalloc::MiMalloc;
-
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
-
 use futures::stream::TryStreamExt;
 use mongodb::bson::{DateTime, Bson};
 use timetable::TimeTableEntry;
@@ -28,14 +23,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest("/api", api_service)
         .nest("/openapi.json", open_api_specs)
         .data(coll_db.clone());
-    Server::new(TcpListener::bind("127.0.0.1:3001"))
+    Server::new(TcpListener::bind("0.0.0.0:3001"))
         .run(app)
         .await?;
     Ok(())
 }
 async fn connect_db() -> Result<Collection<TimeTableEntry>, Box<dyn Error>> {
     let url = format!(
-        "mongodb://{0}:{1}@lmongodb:27017",
+        "mongodb://{0}:{1}@mongodb:27017",
         std::env::var("MONGO_INITDB_ROOT_USERNAME")?,
         std::env::var("MONGO_INITDB_ROOT_PASSWORD")?
     );

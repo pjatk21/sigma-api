@@ -29,6 +29,6 @@ WORKDIR /usr/local/bin/
 
 COPY --from=builder builder/target/release/pjatk-api /usr/local/bin/
 
-RUN apt-get update -y && apt-get install ca-certificates --no-install-recommends -y && rm -rf /var/lib/apt/lists/*
+RUN rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["pjatk-api"]
