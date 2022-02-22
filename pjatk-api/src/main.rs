@@ -63,51 +63,72 @@ impl Api {
         coll_db: Data<&Collection<TimeTableEntry>>,
         date_from: Query<Option<i64>>,
         date_to: Query<Option<i64>>,
-        group: Query<Option<String>>,
+        groups: Query<Option<String>>,
     ) -> Json<Vec<TimeTableEntry>> {
-        let cursor: Cursor<TimeTableEntry> = coll_db
-            .find(
-                match (date_from.deref(), date_to.deref(), group.deref()) {
-                    (Some(date_from), Some(date_to), Some(group)) => {
-                        let datetime_beginning= DateTime::from_millis(*date_from * 1000);
-                        let datetime_ending= DateTime::from_millis(*date_to * 1000);
-                        doc! {"datetime_beginning":{"$gte":Bson::DateTime(datetime_beginning)},"datetime_ending":{"$lte":Bson::DateTime(datetime_ending)},"groups":group}
+        let mut entries: Vec<TimeTableEntry> = vec![];
+        if let Some(groups) = groups.deref() {
+            for group in groups.split_terminator(';').filter(|group| !group.is_empty()) {
+                let cursor: Cursor<TimeTableEntry> = coll_db
+                .find(
+                    match (date_from.deref(), date_to.deref()) {
+                        (Some(date_from), Some(date_to)) => {
+                            let datetime_beginning= DateTime::from_millis(*date_from * 1000);
+                            let datetime_ending= DateTime::from_millis(*date_to * 1000);
+                            doc! {"datetime_beginning":{"$gte":Bson::DateTime(datetime_beginning)},"datetime_ending":{"$lte":Bson::DateTime(datetime_ending)},"groups":group}
+                        },
+                        (Some(date_from), None) => {
+                            let datetime_beginning= DateTime::from_millis(*date_from * 1000);
+                            doc! {"datetime_beginning":{"$gte":Bson::DateTime(datetime_beginning)},"groups":group}
+                        },
+                        (None, Some(date_to)) => {
+                            let datetime_ending= DateTime::from_millis(*date_to * 1000);
+                            doc! {"datetime_ending":{"$lte":Bson::DateTime(datetime_ending)},"groups":group}
+                        },
+                        (None, None) => doc! {"groups":group},
                     },
-                    (Some(date_from), Some(date_to), None) => {
+                    None,
+                )
+                .await
+                .expect("find failed!");
+                let mut group_entries: Vec<TimeTableEntry> =
+                    cursor.try_collect().await.expect("collect failed!");
+                entries.append(&mut group_entries);
+            }
+        } else {
+            let cursor: Cursor<TimeTableEntry> = coll_db
+            .find(
+                match (date_from.deref(), date_to.deref()) {
+                    (Some(date_from), Some(date_to)) => {
                         let datetime_beginning= DateTime::from_millis(*date_from * 1000);
                         let datetime_ending= DateTime::from_millis(*date_to * 1000);
                         doc! {"datetime_beginning":{"$gte":Bson::DateTime(datetime_beginning)},"datetime_ending":{"$lte":Bson::DateTime(datetime_ending)}}},
-                    (Some(date_from), None, Some(group)) => {
-                        let datetime_beginning= DateTime::from_millis(*date_from * 1000);
-                        doc! {"datetime_beginning":{"$gte":Bson::DateTime(datetime_beginning)},"groups":group}
-                    },
-                    (Some(date_from), None, None) => {
+                    (Some(date_from), None) => {
                         let datetime_beginning= DateTime::from_millis(*date_from * 1000);
                         doc! {"datetime_beginning":{"$gte":Bson::DateTime(datetime_beginning)}}
                     },
-                    (None, Some(date_to), Some(group)) => {
-                        let datetime_ending= DateTime::from_millis(*date_to * 1000);
-                        doc! {"datetime_ending":{"$lte":Bson::DateTime(datetime_ending)},"groups":group}
-                    },
-                    (None, Some(date_to), None) => {
+                    (None, Some(date_to)) => {
                         let datetime_ending= DateTime::from_millis(*date_to * 1000);
                         doc! {"datetime_ending":{"$lte":Bson::DateTime(datetime_ending)}}
                     },
-                    (None, None, Some(group)) => doc! {"groups":group},
-                    (None, None, None) => doc! {},
+                    (None, None) => doc! {},
                 },
                 None,
             )
             .await
             .expect("find failed!");
-        let entries: Vec<TimeTableEntry> = cursor.try_collect().await.expect("collect failed!");
+            entries = cursor.try_collect().await.expect("collect failed!");
+        }
+        entries.sort_by_key(|a| a.get_datetime_beginning());
         Json(entries)
     }
 
     #[oai(path = "/get_groups", method = "get")]
     async fn get_groups(&self, coll_db: Data<&Collection<TimeTableEntry>>) -> SigmaApiResponse {
         if let Ok(cursor) = coll_db.distinct("groups", None, None).await {
-            let groups: Vec<String> = cursor.into_iter().map(|entry| entry.to_string().replace('\"', "")).collect();
+            let groups: Vec<String> = cursor
+                .into_iter()
+                .map(|entry| entry.to_string().replace('\"', ""))
+                .collect();
             SigmaApiResponse::Found(Json(groups))
         } else {
             SigmaApiResponse::NotFound(PlainText("not found".to_string()))

@@ -2,7 +2,7 @@
 
 use std::{error::Error, fmt::Display};
 
-use chrono::{DateTime, Utc, Duration};
+use chrono::{DateTime, Duration, Utc};
 use kuchiki::NodeRef;
 use poem_openapi::Object;
 use serde::{Deserialize, Serialize};
@@ -84,15 +84,29 @@ impl TryFrom<NodeRef> for TimeTableEntry {
     }
 }
 
+impl TimeTableEntry {
+    pub fn get_datetime_beginning(&self) -> DateTime<Utc> {
+        self.datetime_beginning
+    }
+}
 fn get_mock_entry() -> TimeTableEntry {
     TimeTableEntry {
         title: Some("Ostatni wykład".to_string()),
-        persons: vec!["Niezgoda Adam".to_string(),"Tomaszewski Michał".to_string()],
+        persons: vec![
+            "Niezgoda Adam".to_string(),
+            "Tomaszewski Michał".to_string(),
+        ],
         details: Some("Podsumowanie semestru".to_string()),
         type_of: "Wykład".to_string(),
-        subjects: vec!["Systemy operacyjne".to_string(),"Programowanie obiektowe i GUI".to_string()],
-        subject_codes: vec!["SOP".to_string(),"GUI".to_string()],
-        groups: Some(vec!["WIs I.2 - 46c".to_string(),"WIS I.2 - 23c".to_string()]),
+        subjects: vec![
+            "Systemy operacyjne".to_string(),
+            "Programowanie obiektowe i GUI".to_string(),
+        ],
+        subject_codes: vec!["SOP".to_string(), "GUI".to_string()],
+        groups: Some(vec![
+            "WIs I.2 - 46c".to_string(),
+            "WIS I.2 - 23c".to_string(),
+        ]),
         students_count: Some("115 115 ITN".to_string()),
         building: "B2020".to_string(),
         room: "B/227".to_string(),
