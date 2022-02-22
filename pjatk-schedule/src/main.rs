@@ -8,7 +8,7 @@ use poem_openapi::{param::Path, payload::PlainText, OpenApi, OpenApiService};
 use timetable::TimeTableEntry;
 
 use std::{error::Error, sync::Arc, time::Duration};
-use thirtyfour::{prelude::*, PageLoadStrategy};
+use thirtyfour::{error::WebDriverError, prelude::*, PageLoadStrategy};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -86,9 +86,7 @@ async fn parse_timetable_day(
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     let table = web_driver.find_element(By::Id("ZajeciaTable")).await?;
-    let good_elements = table
-        .find_elements(By::Css("tbody td[id*=\";r\"],tbody td[id*=\";z\"]"))
-        .await?;
+    let good_elements = table.find_elements(By::Css("tbody td[id*=\";\"]")).await?;
 
     let count = good_elements.len();
     dbg!(format!("Found {} timetable entries", count));
@@ -97,6 +95,12 @@ async fn parse_timetable_day(
         let (x, y) = element.rect().await?.icenter();
         if x > window_rect.x || y > window_rect.y || x < 0 || y < 0 {
             element.scroll_into_view().await?;
+        }
+        while let Err(err) = element.click().await {
+            match err {
+                WebDriverError::ElementClickIntercepted(_) => (),
+                _ => eprintln!("Unexpected error: {:#?}", err),
+            }
         }
         web_driver
             .action_chain()
