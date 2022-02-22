@@ -22,7 +22,9 @@ services:
     ports:
       - 4444:4444
   # pjatk-api:
-  #   build: .\pjatk-api\.
+  #   build:
+  #     dockerfile: pjatk-api/Dockerfile
+  #     context: .
   #   ports:
   #     - 3000:3001
   # pjatk-schedule:
