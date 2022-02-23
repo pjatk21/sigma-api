@@ -5,14 +5,20 @@ use futures::stream::TryStreamExt;
 
 use kuchiki::traits::TendrilSink;
 use mongodb::{options::ClientOptions, Client, Collection};
-use poem::{listener::TcpListener, web::Data, EndpointExt, Route, Server};
+use poem::{listener::TcpListener, web::Data, EndpointExt, IntoResponse, Route, Server};
 use poem_openapi::{param::Path, payload::PlainText, OpenApi, OpenApiService};
 use timetable::TimeTableEntry;
+use tokio::sync::mpsc::UnboundedSender;
 
 use std::{error::Error, sync::Arc, time::Duration};
 use thirtyfour::{prelude::*, PageLoadStrategy};
+#[derive(Debug)]
+enum EntryToSend {
+    Entry(Box<TimeTableEntry>),
+    Quit,
+}
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     let coll_db = connect_db().await?;
     let client = Arc::new(init_pjatk_client().await?);
@@ -25,15 +31,50 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let api_service =
         OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.2").server(server_url);
     let docs = api_service.swagger_ui();
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<EntryToSend>();
     let app = Route::new()
         .nest("/api", api_service)
         .nest("/", docs)
-        .data(coll_db.clone())
-        .data(client.clone());
+        .data(client.clone())
+        .data(tx.clone()).catch_all_error(move |err| {
+            tx.send(EntryToSend::Quit).expect("quitting failed!");
+            eprintln!("{:#?}",err);
+            custom_err
+        }());
+    tokio::spawn(async move {
+        loop {
+            if let Some(entry) = rx.recv().await {
+                match entry {
+                    EntryToSend::Entry(entry) => {
+                        let db = coll_db.database(
+                            &std::env::var("MONGO_INITDB_DATABASE")
+                                .expect("Missing env: default database"),
+                        );
+                        let timetable: Collection<TimeTableEntry> = db.collection(
+                            &std::env::var("MONGO_INITDB_COLLECTION")
+                                .expect("Missing env: default collection"),
+                        );
+
+                        timetable
+                            .insert_one(entry, None)
+                            .await
+                            .expect("Insert failed!");
+                    }
+                    EntryToSend::Quit => break,
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+    });
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
         .run(app)
         .await?;
+
     Ok(())
+}
+
+async fn custom_err() -> impl IntoResponse {
+    PlainText("Internal Server Error")
 }
 
 struct Api;
@@ -42,8 +83,8 @@ impl Api {
     #[oai(path = "/fetch_days/:beginning_date/:amount_of_days", method = "get")]
     async fn fetch_days(
         &self,
-        db_client: Data<&Client>,
         web_driver: Data<&Arc<WebDriver>>,
+        tx: Data<&UnboundedSender<EntryToSend>>,
         beginning_date: Path<String>,
         amount_of_days: Path<Option<u8>>,
     ) -> PlainText<String> {
@@ -56,14 +97,14 @@ impl Api {
                 for date in checked_beginning.iter_days().take(amount_of_days.into()) {
                     let date_string = date.format("%Y-%m-%d").to_string();
                     web_driver.refresh().await.expect("refresh failed!");
-                    parse_timetable_day(&web_driver, date_string, db_client.clone())
+                    parse_timetable_day(&web_driver, date_string, tx.clone())
                         .await
                         .map_err(|err| eprintln!("{}", &err))
                         .expect("failed!");
                 }
             } else {
                 let date_string = checked_beginning.format("%Y-%m-%d").to_string();
-                parse_timetable_day(&web_driver, date_string, db_client.clone())
+                parse_timetable_day(&web_driver, date_string, tx.clone())
                     .await
                     .map_err(|err| eprintln!("{}", &err))
                     .expect("failed!");
@@ -101,7 +142,7 @@ async fn init_pjatk_client() -> Result<WebDriver, Box<dyn Error>> {
 async fn parse_timetable_day(
     web_driver: &WebDriver,
     date: String,
-    db_client: Client,
+    tx: UnboundedSender<EntryToSend>,
 ) -> Result<(), Box<dyn Error>> {
     let date_input = web_driver
         .find_element(By::Id("DataPicker_dateInput"))
@@ -145,20 +186,7 @@ async fn parse_timetable_day(
         let html = tooltip_element.inner_html().await?;
         let tooltip_node = kuchiki::parse_html().from_utf8().one(html.as_bytes());
         let entry: timetable::TimeTableEntry = tooltip_node.try_into()?;
-        let client_db = db_client.clone();
-        tokio::spawn(async move {
-            let db = client_db.database(
-                &std::env::var("MONGO_INITDB_DATABASE").expect("Missing env: default database"),
-            );
-            let timetable: Collection<TimeTableEntry> = db.collection(
-                &std::env::var("MONGO_INITDB_COLLECTION").expect("Missing env: default collection"),
-            );
-
-            timetable
-                .insert_one(entry, None)
-                .await
-                .expect("Insert failed!");
-        });
+        tx.send(EntryToSend::Entry(Box::new(entry)))?;
         dbg!(index);
     }
     Ok(())
