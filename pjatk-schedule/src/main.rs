@@ -32,12 +32,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.2").server(server_url);
     let docs = api_service.swagger_ui();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<EntryToSend>();
+    let tx_clone = tx.clone();
     let app = Route::new()
         .nest("/api", api_service)
         .nest("/", docs)
         .data(client.clone())
         .data(tx.clone()).catch_all_error(move |err| {
-            tx.send(EntryToSend::Quit).expect("quitting failed!");
+            tx_clone.send(EntryToSend::Quit).expect("quitting failed!");
             eprintln!("{:#?}",err);
             custom_err
         }());

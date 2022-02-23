@@ -29,8 +29,6 @@ services:
       MOZ_HEADLESS: 1
     ports:
       - 4444:4444
-    depends_on:
-      - pjatk-scraper
     restart: unless-stopped
 
   pjatk-api:
@@ -41,13 +39,18 @@ services:
       - ${PJATK_API_PORT}:${PJATK_API_PORT}
     env_file:
       - .env
-      
+    depends_on:
+      - mongodb
+
   pjatk-scraper:
-    build:
+    build: 
       dockerfile: pjatk-schedule/Dockerfile
       context: .
     ports:
       - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}
     env_file:
       - .env
+    depends_on:
+      - geckodriver
+      - mongodb
     restart: unless-stopped

@@ -9,6 +9,7 @@ services:
     volumes:
       - ./mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     restart: unless-stopped
+
   database-viewer:
     image: mongo-express
     depends_on:
@@ -22,6 +23,7 @@ services:
     ports:
       - "8081:8081"
     restart: unless-stopped
+
   geckodriver:
     image: instrumentisto/geckodriver:92.0-driver0.29.1
     shm_size: 2g
@@ -29,9 +31,8 @@ services:
       MOZ_HEADLESS: 1
     ports:
       - 4444:4444
-    depends_on:
-    - pjatk-scraper
     restart: unless-stopped
+
   pjatk-api:
     build:
       dockerfile: pjatk-api/Dockerfile
@@ -40,7 +41,10 @@ services:
       - ${PJATK_API_PORT}:${PJATK_API_PORT}
     env_file:
       - .env
+    depends_on:
+      - mongodb
     restart: unless-stopped
+
   pjatk-scraper:
     build: 
       dockerfile: pjatk-schedule/Dockerfile
@@ -49,5 +53,8 @@ services:
       - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}
     env_file:
       - .env
+    depends_on:
+      - geckodriver
+      - mongodb
     restart: unless-stopped
   
