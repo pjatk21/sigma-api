@@ -8,7 +8,7 @@ services:
       - ${MONGO_PORT}:${MONGO_PORT}
     volumes:
       - ./mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-    restart: unless-stopped
+
   database-viewer:
     image: mongo-express
     depends_on:
@@ -21,7 +21,7 @@ services:
       - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - "8081:8081"
-    restart: unless-stopped
+
   geckodriver:
     image: instrumentisto/geckodriver:92.0-driver0.29.1
     shm_size: 2g
@@ -30,8 +30,9 @@ services:
     ports:
       - 4444:4444
     depends_on:
-    - pjatk-scraper
+      - pjatk-scraper
     restart: unless-stopped
+
   pjatk-api:
     build:
       dockerfile: pjatk-api/Dockerfile
@@ -40,9 +41,9 @@ services:
       - ${PJATK_API_PORT}:${PJATK_API_PORT}
     env_file:
       - .env
-    restart: unless-stopped
+      
   pjatk-scraper:
-    build: 
+    build:
       dockerfile: pjatk-schedule/Dockerfile
       context: .
     ports:
@@ -50,4 +51,3 @@ services:
     env_file:
       - .env
     restart: unless-stopped
-  
