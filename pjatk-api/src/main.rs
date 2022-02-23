@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         std::env::var("PJATK_API_URL_WITH_PROTOCOL")?,
         port
     );
-    let api_service = OpenApiService::new(Api, "PJATK Schedule API", "0.1").server(server_url);
+    let api_service = OpenApiService::new(Api, "PJATK Schedule API", "0.2").server(server_url);
     let docs = api_service.swagger_ui();
     let open_api_specs = api_service.spec_endpoint();
     let app = Route::new()

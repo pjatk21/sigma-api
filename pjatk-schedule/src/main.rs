@@ -10,7 +10,7 @@ use poem_openapi::{param::Path, payload::PlainText, OpenApi, OpenApiService};
 use timetable::TimeTableEntry;
 
 use std::{error::Error, sync::Arc, time::Duration};
-use thirtyfour::{error::WebDriverError, prelude::*, PageLoadStrategy};
+use thirtyfour::{prelude::*, PageLoadStrategy};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -22,15 +22,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
         std::env::var("PJATK_API_URL_WITH_PROTOCOL")?,
         port
     );
-    let api_service = OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.1")
-        .server(server_url);
+    let api_service =
+        OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.2").server(server_url);
     let docs = api_service.swagger_ui();
     let app = Route::new()
         .nest("/api", api_service)
         .nest("/", docs)
         .data(coll_db.clone())
         .data(client.clone());
-    Server::new(TcpListener::bind(format!("0.0.0.0:{}",port)))
+    Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
         .run(app)
         .await?;
     Ok(())
@@ -39,17 +39,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
 struct Api;
 #[OpenApi]
 impl Api {
-    #[oai(path = "/fetch_day/:date", method = "get")]
-    async fn fetch_day(
+    #[oai(path = "/fetch_days/:beginning_date/:amount_of_days", method = "get")]
+    async fn fetch_days(
         &self,
         db_client: Data<&Client>,
         web_driver: Data<&Arc<WebDriver>>,
-        date: Path<String>,
+        beginning_date: Path<String>,
+        amount_of_days: Path<Option<u8>>,
     ) -> PlainText<String> {
-        parse_timetable_day(&web_driver, date.to_string(), db_client.clone())
-            .await
-            .map_err(|err| eprintln!("{}", &err))
-            .expect("failed!");
+        let date = chrono::NaiveDate::parse_from_str(&beginning_date.0, "%Y-%m-%d");
+        if date.is_err() {
+            return PlainText("parsing error".to_string());
+        } else {
+            let checked_beginning = date.unwrap();
+            if let Some(amount_of_days) = amount_of_days.0 {
+                for date in checked_beginning.iter_days().take(amount_of_days.into()) {
+                    let date_string = date.format("%Y-%m-%d").to_string();
+                    web_driver.refresh().await.expect("refresh failed!");
+                    parse_timetable_day(&web_driver, date_string, db_client.clone())
+                        .await
+                        .map_err(|err| eprintln!("{}", &err))
+                        .expect("failed!");
+                }
+            } else {
+                let date_string = checked_beginning.format("%Y-%m-%d").to_string();
+                parse_timetable_day(&web_driver, date_string, db_client.clone())
+                    .await
+                    .map_err(|err| eprintln!("{}", &err))
+                    .expect("failed!");
+            }
+        }
         PlainText("done".to_string())
     }
 }
@@ -106,11 +125,16 @@ async fn parse_timetable_day(
         if x > window_rect.x || y > window_rect.y || x < 0 || y < 0 {
             element.scroll_into_view().await?;
         }
-        while let Err(err) = element.click().await {
-            match err {
-                WebDriverError::ElementClickIntercepted(_) => (),
-                _ => eprintln!("Unexpected error: {:#?}", err),
-            }
+        element.wait_until().clickable().await?;
+        if let Err(err) = web_driver
+            .action_chain()
+            .move_to_element_center(element)
+            .click()
+            .perform()
+            .await
+        {
+            eprintln!("Unexpected error: {:#?}", err);
+            break;
         }
         let tooltip_element = web_driver
             .query(By::Id("RadToolTipManager1RTMPanel"))
@@ -123,8 +147,12 @@ async fn parse_timetable_day(
         let entry: timetable::TimeTableEntry = tooltip_node.try_into()?;
         let client_db = db_client.clone();
         tokio::spawn(async move {
-            let db = client_db.database(&std::env::var("MONGO_INITDB_DATABASE").expect("Missing env: default database"));
-            let timetable: Collection<TimeTableEntry> = db.collection(&std::env::var("MONGO_INITDB_COLLECTION").expect("Missing env: default collection"));
+            let db = client_db.database(
+                &std::env::var("MONGO_INITDB_DATABASE").expect("Missing env: default database"),
+            );
+            let timetable: Collection<TimeTableEntry> = db.collection(
+                &std::env::var("MONGO_INITDB_COLLECTION").expect("Missing env: default collection"),
+            );
 
             timetable
                 .insert_one(entry, None)
