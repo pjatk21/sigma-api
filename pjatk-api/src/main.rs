@@ -4,6 +4,7 @@ use futures::stream::TryStreamExt;
 use mongodb::bson::{Bson, DateTime};
 
 use poem_openapi::payload::PlainText;
+use serde::{Deserialize, Serialize};
 use timetable::TimeTableEntry;
 
 use mongodb::{bson::doc, options::ClientOptions, Client, Collection, Cursor};
@@ -11,8 +12,9 @@ use mongodb::{bson::doc, options::ClientOptions, Client, Collection, Cursor};
 use poem::{listener::TcpListener, web::Data, EndpointExt, Route, Server};
 use poem_openapi::param::Query;
 use poem_openapi::{payload::Json, OpenApi, OpenApiService};
-
+use poem_openapi::{types::*, Object};
 use std::error::Error;
+use std::fmt::Display;
 use std::ops::Deref;
 
 #[tokio::main]
@@ -25,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         port
     );
     let api_service = OpenApiService::new(Api, "PJATK Schedule API", "0.2").server(server_url);
-    let docs = api_service.swagger_ui();
+    let docs = api_service.redoc();
     let open_api_specs = api_service.spec_endpoint();
     let app = Route::new()
         .nest("/", docs)
@@ -57,17 +59,24 @@ async fn connect_db() -> Result<Collection<TimeTableEntry>, Box<dyn Error>> {
 struct Api;
 #[OpenApi]
 impl Api {
+    /// Get an timetable
     #[oai(path = "/get_timetable", method = "get")]
     async fn get_timetable(
         &self,
         coll_db: Data<&Collection<TimeTableEntry>>,
+        /// Unix timestamp - beginning of search
         date_from: Query<Option<i64>>,
+        /// Unix timestamp - end of search
         date_to: Query<Option<i64>>,
+        /// Array of groups to only search for - seperated by `;`
         groups: Query<Option<String>>,
-    ) -> Json<Vec<TimeTableEntry>> {
+    ) -> SigmaApiResponse<TimeTableEntry, SigmaApiError> {
         let mut entries: Vec<TimeTableEntry> = vec![];
         if let Some(groups) = groups.deref() {
-            for group in groups.split_terminator(';').filter(|group| !group.is_empty()) {
+            for group in groups
+                .split_terminator(';')
+                .filter(|group| !group.is_empty())
+            {
                 let cursor: Cursor<TimeTableEntry> = coll_db
                 .find(
                     match (date_from.deref(), date_to.deref()) {
@@ -118,12 +127,20 @@ impl Api {
             .expect("find failed!");
             entries = cursor.try_collect().await.expect("collect failed!");
         }
-        entries.sort_by_key(|a| a.get_datetime_beginning());
-        Json(entries)
+        if entries.is_empty() {
+            SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
+        } else {
+            entries.sort_by_key(|a| a.get_datetime_beginning());
+            SigmaApiResponse::Found(Json(entries))
+        }
     }
 
+    /// Get all avaliable groups
     #[oai(path = "/get_groups", method = "get")]
-    async fn get_groups(&self, coll_db: Data<&Collection<TimeTableEntry>>) -> SigmaApiResponse {
+    async fn get_groups(
+        &self,
+        coll_db: Data<&Collection<TimeTableEntry>>,
+    ) -> SigmaApiResponse<String, SigmaApiError> {
         if let Ok(cursor) = coll_db.distinct("groups", None, None).await {
             let groups: Vec<String> = cursor
                 .into_iter()
@@ -131,15 +148,35 @@ impl Api {
                 .collect();
             SigmaApiResponse::Found(Json(groups))
         } else {
-            SigmaApiResponse::NotFound(PlainText("not found".to_string()))
+            SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
         }
     }
 }
 
 #[derive(poem_openapi::ApiResponse)]
-enum SigmaApiResponse {
+enum SigmaApiResponse<T: Send + ToJSON, E: Send + ToJSON + Error> {
     #[oai(status = 200)]
-    Found(Json<Vec<String>>),
+    Found(Json<Vec<T>>),
     #[oai(status = 404)]
     NotFound(PlainText<String>),
+    #[oai(status = 500)]
+    InternalError(Json<E>),
+}
+
+#[derive(Object, Serialize, Deserialize, Debug, Clone)]
+struct SigmaApiError {}
+
+impl Error for SigmaApiError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+
+    fn cause(&self) -> Option<&dyn Error> {
+        self.source()
+    }
+}
+impl Display for SigmaApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Internal Server Error")
+    }
 }
