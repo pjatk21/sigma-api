@@ -1,8 +1,9 @@
-#![deny(clippy::perf, clippy::complexity, clippy::style)]
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 
 use std::{error::Error, fmt::Display};
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
+use chrono_tz::Europe::Warsaw;
 use kuchiki::NodeRef;
 use poem_openapi::Object;
 use serde::{Deserialize, Serialize};
@@ -31,14 +32,7 @@ impl TryFrom<NodeRef> for TimeTableEntry {
 
     fn try_from(dom: NodeRef) -> Result<Self, Self::Error> {
         let date = get_data(&dom, "#ctl06_DataZajecLabel", "date")?;
-        let hour_beginning = get_data(&dom, "#ctl06_GodzRozpLabel", "hour_beginning")?;
-        let hour_ending = get_data(&dom, "#ctl06_GodzZakonLabel", "hour_ending")?;
-        let beginning_str = format!("{} {} +0100", date, hour_beginning);
-        let ending_str = format!("{} {} +0100", date, hour_ending);
-        let datetime_beginning =
-            DateTime::parse_from_str(&beginning_str, "%d.%m.%Y %T %z")?.with_timezone(&Utc);
-        let datetime_ending =
-            DateTime::parse_from_str(&ending_str, "%d.%m.%Y %T %z")?.with_timezone(&Utc);
+        let (datetime_beginning, datetime_ending) = extract_date_from_string(&dom, date)?;
         let result = TimeTableEntry {
             title: get_data_option(&dom, "#ctl06_TytulRezerwacjiLabel"),
             persons: get_multiple_data(
@@ -82,6 +76,29 @@ impl TryFrom<NodeRef> for TimeTableEntry {
         };
         Ok(result)
     }
+}
+
+fn extract_date_from_string(
+    dom: &NodeRef,
+    date: String,
+) -> Result<(DateTime<Utc>, DateTime<Utc>), Box<dyn Error>> {
+    let hour_beginning = get_data(dom, "#ctl06_GodzRozpLabel", "hour_beginning")?;
+    let hour_ending = get_data(dom, "#ctl06_GodzZakonLabel", "hour_ending")?;
+    let beginning_str = format!("{} {}", date, hour_beginning);
+    let ending_str = format!("{} {}", date, hour_ending);
+    let beginning_naive = NaiveDateTime::parse_from_str(&beginning_str, "%d.%m.%Y %T")?;
+    let ending_naive = NaiveDateTime::parse_from_str(&ending_str, "%d.%m.%Y %T")?;
+    let datetime_beginning = Warsaw
+        .from_local_datetime(&beginning_naive)
+        .single()
+        .expect("Beginning time parsing failed!")
+        .with_timezone(&Utc);
+    let datetime_ending = Warsaw
+        .from_local_datetime(&ending_naive)
+        .single()
+        .expect("Ending time parsing failed!")
+        .with_timezone(&Utc);
+    Ok((datetime_beginning, datetime_ending))
 }
 
 impl TimeTableEntry {
