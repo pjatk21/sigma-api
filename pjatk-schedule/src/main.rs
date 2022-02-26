@@ -1,4 +1,4 @@
-#![deny(clippy::perf, clippy::complexity, clippy::style)]
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 
 #[allow(unused_imports)]
 use futures::stream::TryStreamExt;
@@ -12,6 +12,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use std::{error::Error, sync::Arc, time::Duration};
 use thirtyfour::{prelude::*, PageLoadStrategy};
+
 #[derive(Debug)]
 enum EntryToSend {
     Entry(Box<TimeTableEntry>),
@@ -61,7 +62,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             .await
                             .expect("Insert failed!");
                     }
-                    EntryToSend::Quit => break,
+                    EntryToSend::Quit => {
+                        client
+                            .close()
+                            .await
+                            .expect("Error closing browser! Restart GeckoDriver Docker container!");
+                        break;
+                    }
                 }
             }
             tokio::time::sleep(Duration::from_millis(500)).await;
@@ -111,6 +118,8 @@ impl Api {
                     .expect("failed!");
             }
         }
+        tx.send(EntryToSend::Quit)
+            .expect("Error closing browser! Restart GeckoDriver Docker container!");
         PlainText("done".to_string())
     }
 }
