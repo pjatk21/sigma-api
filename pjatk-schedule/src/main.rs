@@ -5,12 +5,15 @@ use futures::stream::TryStreamExt;
 
 use kuchiki::traits::TendrilSink;
 use mongodb::{options::ClientOptions, Client, Collection};
-use poem::{listener::TcpListener, web::Data, EndpointExt, IntoResponse, Route, Server};
+use poem::{
+    listener::TcpListener, web::Data, Endpoint, EndpointExt, IntoResponse, Request, Response,
+    Result, Route, Server,
+};
 use poem_openapi::{param::Path, payload::PlainText, OpenApi, OpenApiService};
 use timetable::TimeTableEntry;
 use tokio::sync::mpsc::UnboundedSender;
 
-use std::{error::Error, sync::Arc, time::Duration};
+use std::{error::Error, fmt::Display, sync::Arc, time::Duration};
 use thirtyfour::{prelude::*, PageLoadStrategy};
 
 #[derive(Debug)]
@@ -38,11 +41,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest("/api", api_service)
         .nest("/", docs)
         .data(client.clone())
-        .data(tx.clone()).catch_all_error(move |err| {
+        .data(tx.clone())
+        .catch_all_error(move |err| {
             tx_clone.send(EntryToSend::Quit).expect("quitting failed!");
             eprintln!("{:#?}",err);
             custom_err
-        }());
+        }())
+        .around(rate_limit_and_auth);
     tokio::spawn(async move {
         loop {
             if let Some(entry) = rx.recv().await {
@@ -82,7 +87,53 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn custom_err() -> impl IntoResponse {
-    PlainText("Internal Server Error")
+    poem::error::InternalServerError(ApiError {
+        cause: "Internal Server Error",
+    })
+    .as_response()
+}
+
+async fn rate_limit_and_auth<E: Endpoint>(endpoint: E, request: Request) -> Result<Response> {
+    // let ip = request.remote_addr();
+    if let Some(auth_code) = request.header("Authorization") {
+        if let Ok(auth_key) = std::env::var("AUTH_KEY") {
+            if format!("Bearer: {}", auth_key) != auth_code {
+                Err(poem::error::Unauthorized(ApiError { cause: "Bad token" }))
+            } else {
+                let res = endpoint.call(request).await;
+                match res {
+                    Ok(resp) => {
+                        let resp = resp.into_response();
+                        Ok(resp)
+                    }
+                    Err(err) => Err(err),
+                }
+            }
+        } else {
+            panic!("No auth key provided! Restart GeckoDriver Docker container!");
+        }
+    } else {
+        Err(poem::error::Unauthorized(ApiError {
+            cause: "Missing token",
+        }))
+    }
+}
+
+#[derive(Debug)]
+struct ApiError {
+    cause: &'static str,
+}
+
+impl Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::write(f, format_args!("API error: {}", self.cause))
+    }
+}
+
+impl Error for ApiError {
+    fn cause(&self) -> Option<&dyn Error> {
+        None
+    }
 }
 
 struct Api;
