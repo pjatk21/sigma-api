@@ -6,8 +6,8 @@ use futures::stream::TryStreamExt;
 use kuchiki::traits::TendrilSink;
 use mongodb::{options::ClientOptions, Client, Collection};
 use poem::{
-    listener::TcpListener, web::Data, Endpoint, EndpointExt, IntoResponse, Request, Response,
-    Result, Route, Server,
+    middleware::TowerLayerCompatExt, web::Data, Endpoint, EndpointExt,
+    IntoResponse, Request, Response, Result, Route, Server, listener::TcpListener,
 };
 use poem_openapi::{param::Path, payload::PlainText, OpenApi, OpenApiService};
 use timetable::TimeTableEntry;
@@ -35,19 +35,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let api_service =
         OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.2").server(server_url);
     let docs = api_service.swagger_ui();
+    let open_api_specs = api_service.spec_endpoint();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<EntryToSend>();
     let tx_clone = tx.clone();
     let app = Route::new()
-        .nest("/api", api_service)
         .nest("/", docs)
+        .nest("/api", api_service)
+        .nest("/openapi.json", open_api_specs)
         .data(client.clone())
         .data(tx.clone())
+        .with(tower::limit::ConcurrencyLimitLayer::new(1).compat())
+        .with(tower::buffer::BufferLayer::new(100).compat())
         .catch_all_error(move |err| {
             tx_clone.send(EntryToSend::Quit).expect("quitting failed!");
-            eprintln!("{:#?}",err);
-            custom_err
-        }())
-        .around(rate_limit_and_auth);
+            custom_err(err)
+        })
+        .around(auth);
     tokio::spawn(async move {
         loop {
             if let Some(entry) = rx.recv().await {
@@ -86,19 +89,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn custom_err() -> impl IntoResponse {
+async fn custom_err(err: poem::Error) -> impl IntoResponse {
     poem::error::InternalServerError(ApiError {
-        cause: "Internal Server Error",
+        cause: err.to_string(),
     })
     .as_response()
 }
 
-async fn rate_limit_and_auth<E: Endpoint>(endpoint: E, request: Request) -> Result<Response> {
-    // let ip = request.remote_addr();
+async fn auth<E: Endpoint>(endpoint: E, request: Request) -> Result<Response> {
     if let Some(auth_code) = request.header("Authorization") {
         if let Ok(auth_key) = std::env::var("AUTH_KEY") {
-            if format!("Bearer: {}", auth_key) != auth_code {
-                Err(poem::error::Unauthorized(ApiError { cause: "Bad token" }))
+            if format!("Bearer {}", auth_key) != auth_code {
+                Err(poem::error::Unauthorized(ApiError {
+                    cause: "Bad token".to_string(),
+                }))
             } else {
                 let res = endpoint.call(request).await;
                 match res {
@@ -114,14 +118,14 @@ async fn rate_limit_and_auth<E: Endpoint>(endpoint: E, request: Request) -> Resu
         }
     } else {
         Err(poem::error::Unauthorized(ApiError {
-            cause: "Missing token",
+            cause: "Missing token".to_string(),
         }))
     }
 }
 
 #[derive(Debug)]
 struct ApiError {
-    cause: &'static str,
+    cause: String,
 }
 
 impl Display for ApiError {

@@ -3,19 +3,23 @@
 use futures::stream::TryStreamExt;
 use mongodb::bson::{Bson, DateTime};
 
+use poem::middleware::TowerLayerCompatExt;
+use poem::EndpointExt;
 use poem_openapi::payload::PlainText;
 use serde::{Deserialize, Serialize};
 use timetable::TimeTableEntry;
 
 use mongodb::{bson::doc, options::ClientOptions, Client, Collection, Cursor};
 
-use poem::{listener::TcpListener, web::Data, EndpointExt, Route, Server};
+use poem::{listener::TcpListener, web::Data, Route, Server};
 use poem_openapi::param::Query;
 use poem_openapi::{payload::Json, OpenApi, OpenApiService};
 use poem_openapi::{types::*, Object};
+
 use std::error::Error;
 use std::fmt::Display;
 use std::ops::Deref;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -33,12 +37,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest("/", docs)
         .nest("/api", api_service)
         .nest("/openapi.json", open_api_specs)
-        .data(coll_db.clone());
+        .data(coll_db.clone())
+        .with(tower::limit::RateLimitLayer::new(5, Duration::from_secs(1)).compat())
+        .with(poem::middleware::Tracing);
+   //     .with(CacheMiddleware::default());
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
         .run(app)
         .await?;
     Ok(())
 }
+
 async fn connect_db() -> Result<Collection<TimeTableEntry>, Box<dyn Error>> {
     let url = format!(
         "mongodb://{0}:{1}@{2}:{3}",
@@ -55,6 +63,51 @@ async fn connect_db() -> Result<Collection<TimeTableEntry>, Box<dyn Error>> {
         db.collection(&std::env::var("MONGO_INITDB_COLLECTION")?);
     Ok(coll)
 }
+
+#[derive(Deserialize, PartialEq, Eq, Hash, Clone)]
+
+struct ApiParams {
+    date_from: Option<i64>,
+    date_to: Option<i64>,
+    groups: Option<String>,
+}
+#[derive(Default)]
+// struct CacheMiddleware {}
+
+// impl<E: Endpoint> Middleware<E> for CacheMiddleware {
+//     type Output = CacheEndpoint<E>;
+
+//     fn transform(&self, endpoint: E) -> Self::Output {
+//         CacheEndpoint {
+//             inner: endpoint,
+//             hashmap: HashMap::new(),
+//         }
+//     }
+// }
+
+// struct CacheEndpoint<E> {
+//     inner: E,
+//     hashmap: HashMap<ApiParams, poem::Body>,
+// }
+
+// #[async_trait]
+// impl<E: Endpoint> Endpoint for CacheEndpoint<E> {
+//     type Output = Response;
+
+//     async fn call(&self, req: Request) -> poem::Result<Self::Output> {
+//         let query = req.params::<ApiParams>()?;
+//         if let Some(resp_body) = (*self).hashmap.get(&query) {
+//             let resp = Response::builder().body(*resp_body);
+//             Ok(resp)
+//         } else {
+//             let resp = self.call(req).await;
+//             match resp {
+//                 Ok(body) => Ok(body),
+//                 Err(err) => Err(err),
+//             }
+//         }
+//     }
+// }
 
 struct Api;
 #[OpenApi]
