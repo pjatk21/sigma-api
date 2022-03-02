@@ -123,6 +123,8 @@ impl Api {
         date_to: Query<Option<i64>>,
         /// Array of groups to only search for - seperated by `;`
         groups: Query<Option<String>>,
+        /// Array of tutors to only search for - seperated by `;`
+        tutors: Query<Option<String>>,
     ) -> SigmaApiResponse<TimeTableEntry, SigmaApiError> {
         let mut entries: Vec<TimeTableEntry> = vec![];
         if let Some(groups) = groups.deref() {
@@ -156,6 +158,37 @@ impl Api {
                     cursor.try_collect().await.expect("collect failed!");
                 entries.append(&mut group_entries);
             }
+        } else if let Some(tutors) = tutors.deref() {
+            for tutor in tutors
+                .split_terminator(';')
+                .filter(|tutor| !tutor.is_empty())
+            {
+                let cursor: Cursor<TimeTableEntry> = coll_db
+            .find(
+                match (date_from.deref(), date_to.deref()) {
+                    (Some(date_from), Some(date_to)) => {
+                        let datetime_beginning= DateTime::from_millis(*date_from * 1000);
+                        let datetime_ending= DateTime::from_millis(*date_to * 1000);
+                        doc! {"datetime_beginning":{"$gte":Bson::DateTime(datetime_beginning)},"datetime_ending":{"$lte":Bson::DateTime(datetime_ending)},"persons":tutor}
+                    },
+                    (Some(date_from), None) => {
+                        let datetime_beginning= DateTime::from_millis(*date_from * 1000);
+                        doc! {"datetime_beginning":{"$gte":Bson::DateTime(datetime_beginning)},"persons":tutor}
+                    },
+                    (None, Some(date_to)) => {
+                        let datetime_ending= DateTime::from_millis(*date_to * 1000);
+                        doc! {"datetime_ending":{"$lte":Bson::DateTime(datetime_ending)},"persons":tutor}
+                    },
+                    (None, None) => doc! {"persons":tutor},
+                },
+                None,
+            )
+            .await
+            .expect("find failed!");
+                let mut group_entries: Vec<TimeTableEntry> =
+                    cursor.try_collect().await.expect("collect failed!");
+                entries.append(&mut group_entries);
+            }
         } else {
             let cursor: Cursor<TimeTableEntry> = coll_db
             .find(
@@ -180,6 +213,7 @@ impl Api {
             .expect("find failed!");
             entries = cursor.try_collect().await.expect("collect failed!");
         }
+        
         if entries.is_empty() {
             SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
         } else {
