@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .data(coll_db.clone())
         .with(tower::limit::RateLimitLayer::new(5, Duration::from_secs(1)).compat())
         .with(poem::middleware::Tracing);
-   //     .with(CacheMiddleware::default());
+    //     .with(CacheMiddleware::default());
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
         .run(app)
         .await?;
@@ -200,6 +200,31 @@ impl Api {
                 .map(|entry| entry.to_string().replace('\"', ""))
                 .collect();
             SigmaApiResponse::Found(Json(groups))
+        } else {
+            SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
+        }
+    }
+    /// Get all avaliable tutors
+    #[oai(path = "/get_tutors", method = "get")]
+    async fn get_tutors(
+        &self,
+        coll_db: Data<&Collection<TimeTableEntry>>,
+    ) -> SigmaApiResponse<String, SigmaApiError> {
+        if let Ok(cursor) = coll_db.distinct("persons", None, None).await {
+            let tutors: Vec<String> = cursor
+                .into_iter()
+                .flat_map(|entries| {
+                    if let Some(found_entries) = entries.as_array() {
+                        found_entries
+                            .iter()
+                            .map(|entry| entry.to_string().replace('\"', ""))
+                            .collect()
+                    } else {
+                        vec![entries.to_string().replace('\"', "")]
+                    }
+                })
+                .collect();
+            SigmaApiResponse::Found(Json(tutors))
         } else {
             SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
         }
