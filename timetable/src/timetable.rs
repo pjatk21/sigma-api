@@ -11,18 +11,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone, Object)]
 #[oai(example = "get_mock_entry")]
 pub struct TimeTableEntry {
+    /// Title of entry
     pub(crate) title: Option<String>,
+    /// Persons
     pub(crate) persons: Vec<String>,
+    /// Details of entry
     pub(crate) details: Option<String>,
+    /// Type of entry
     pub(crate) type_of: String,
+    /// Subjects
     pub(crate) subjects: Vec<String>,
+    /// Subjects codes
     pub(crate) subject_codes: Vec<String>,
+    /// Groups
     pub(crate) groups: Option<Vec<String>>,
+    /// Count of students
     pub(crate) students_count: Option<String>,
+    /// Building
     pub(crate) building: String,
+    /// Room
     pub(crate) room: String,
+    /// Date and time of beginning
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub(crate) datetime_beginning: DateTime<Utc>,
+    /// Date and time of ending
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub(crate) datetime_ending: DateTime<Utc>,
 }
@@ -107,6 +119,7 @@ impl TimeTableEntry {
     }
 }
 fn get_mock_entry() -> TimeTableEntry {
+    /// Sample entry
     TimeTableEntry {
         title: Some("Ostatni wykład".to_string()),
         persons: vec![
