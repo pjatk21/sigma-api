@@ -19,9 +19,12 @@ jobs:
       
     - name: Install Rust nightly
       run: rustup default nightly
-      
+
     - name: Update toolcahin
       run: rustup update
+
+    - name: Install `clippy`
+      run: rustup component add clippy
 
     - name: Lint code in workspace
       run: cargo clippy --workspace
