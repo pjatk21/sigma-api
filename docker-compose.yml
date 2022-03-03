@@ -37,6 +37,7 @@ services:
     build:
       dockerfile: pjatk-api/Dockerfile
       context: .
+    image: ghcr.io/pjatk21/pjatk-api:latest
     ports:
       - ${PJATK_API_PORT}:${PJATK_API_PORT}
     env_file:
@@ -49,6 +50,7 @@ services:
     build: 
       dockerfile: pjatk-schedule/Dockerfile
       context: .
+    image: ghcr.io/pjatk21/pjatk-scraper:latest
     ports:
       - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}
     env_file:
