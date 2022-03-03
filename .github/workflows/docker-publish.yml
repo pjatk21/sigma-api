@@ -12,7 +12,7 @@ on:
 
 env:
   # Use docker.io for Docker Hub if empty
-  REGISTRY: ghcr.io
+  REGISTRY: ghcr.io/pjatk21
   IMAGE_NAME_1: "pjatk-api"
   IMAGE_NAME_2: "pjatk-schedule"
 
