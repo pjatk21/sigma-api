@@ -1,0 +1,19 @@
+name: Rust
+
+on:
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    - name: Lint code in workspace
+      run: cargo clippy --workspace
