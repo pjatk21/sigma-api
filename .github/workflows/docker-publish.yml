@@ -14,7 +14,7 @@ env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
   IMAGE_NAME_1: "pjatk-api"
-  IMAGE_NAME_2: "pjatk-scraper"
+  IMAGE_NAME_2: "pjatk-schedule"
 
 
 jobs:
@@ -52,18 +52,24 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_1 }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_2 }}
+            ${{ env.REGISTRY }}/pjatk-scraper
 
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
+      - name: Build and push `pjatk-api`
+        id: build-and-push-1
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
           push: true
-          file: |
-            ./${{env.IMAGE_NAME_1}}/Dockerfile
-            ./${{env.IMAGE_NAME_2}}/Dockerfile
+          file: ./${{env.IMAGE_NAME_1}}/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      
+      - name: Build and push `pjatk-scraper`
+        id: build-and-push-2
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: true
+          file: ./${{env.IMAGE_NAME_2}}/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
