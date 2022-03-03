@@ -19,6 +19,8 @@ jobs:
       
     - name: Install Rust nightly
       run: rustup default nightly
+      
+    - name: Update toolcahin
       run: rustup update
 
     - name: Lint code in workspace
