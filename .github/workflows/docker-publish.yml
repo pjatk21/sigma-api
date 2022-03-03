@@ -64,6 +64,6 @@ jobs:
           push: true
           file: |
             ./${{env.IMAGE_NAME_1}}/Dockerfile
-            ./${{wnv.IMAGE_NAME_2}}/Dockerfile
+            ./${{env.IMAGE_NAME_2}}/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
