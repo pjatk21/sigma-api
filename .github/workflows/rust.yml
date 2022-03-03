@@ -17,5 +17,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
       
+    - name: Install Rust nightly
+      run: rustup default nightly
+      run: rustup update
+
     - name: Lint code in workspace
       run: cargo clippy --workspace
