@@ -38,7 +38,6 @@ jobs:
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
         with:
           registry: ${{ env.REGISTRY }}
@@ -63,5 +62,8 @@ jobs:
         with:
           context: .
           push: true
+          file: |
+            ./${{IMAGE_NAME_1}}/Dockerfile
+            ./${{IMAGE_NAME_2}}/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
