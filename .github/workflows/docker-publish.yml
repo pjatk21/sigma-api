@@ -40,15 +40,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Download hello world
-        run: docker pull hello-world
-        
-      - name: Retag hello world
-        run: docker tag hello-world ghcr.io/pjatk21/hello-world
-        
-      - name: yeet the image to the ghcr
-        run: docker push ghcr.io/pjatk21/hello-world
 
       - name: Build and push `pjatk-api`
         id: build-and-push-api
