@@ -17,6 +17,8 @@ env:
   IMAGE_NAME_1: "pjatk-api"
   IMAGE_NAME_2: "pjatk-schedule"
 
+permissions:
+  packages: write
 
 jobs:
   build:
