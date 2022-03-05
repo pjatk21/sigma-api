@@ -1,4 +1,4 @@
-name: Docker
+name: Docker CI
 
 # This workflow uses actions that are not certified by GitHub.
 # They are provided by a third-party and are governed by
@@ -12,7 +12,8 @@ on:
 
 env:
   # Use docker.io for Docker Hub if empty
-  REGISTRY: ghcr.io/pjatk21
+  REGISTRY: ghcr.io
+  REG_USER: "pjatk21"
   IMAGE_NAME_1: "pjatk-api"
   IMAGE_NAME_2: "pjatk-schedule"
 
@@ -42,22 +43,26 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push `pjatk-api`
-        id: build-and-push-1
+        id: build-and-push-api
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
           push: true
           file: ./${{env.IMAGE_NAME_1}}/Dockerfile
-          tags: ${{ env.REGISTRY }}/${{env.IMAGE_NAME_1}}:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:latest
+            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:${{ github.ref_name }}
       
       - name: Build and push `pjatk-scraper`
-        id: build-and-push-2
+        id: build-and-push-scraper
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
           push: true
-          file: ./${{env.IMAGE_NAME_2}}/Dockerfile
-          tags: ${{ env.REGISTRY }}/pjatk-scraper:latest
+          file: ./${{ env.IMAGE_NAME_2 }}/Dockerfile
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-scraper:latest
+            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-scraper:${{ github.ref_name }}
