@@ -45,7 +45,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push `pjatk-api`
         id: build-and-push-api
