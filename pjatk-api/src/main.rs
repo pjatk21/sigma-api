@@ -71,43 +71,6 @@ struct ApiParams {
     date_to: Option<i64>,
     groups: Option<String>,
 }
-#[derive(Default)]
-// struct CacheMiddleware {}
-
-// impl<E: Endpoint> Middleware<E> for CacheMiddleware {
-//     type Output = CacheEndpoint<E>;
-
-//     fn transform(&self, endpoint: E) -> Self::Output {
-//         CacheEndpoint {
-//             inner: endpoint,
-//             hashmap: HashMap::new(),
-//         }
-//     }
-// }
-
-// struct CacheEndpoint<E> {
-//     inner: E,
-//     hashmap: HashMap<ApiParams, poem::Body>,
-// }
-
-// #[async_trait]
-// impl<E: Endpoint> Endpoint for CacheEndpoint<E> {
-//     type Output = Response;
-
-//     async fn call(&self, req: Request) -> poem::Result<Self::Output> {
-//         let query = req.params::<ApiParams>()?;
-//         if let Some(resp_body) = (*self).hashmap.get(&query) {
-//             let resp = Response::builder().body(*resp_body);
-//             Ok(resp)
-//         } else {
-//             let resp = self.call(req).await;
-//             match resp {
-//                 Ok(body) => Ok(body),
-//                 Err(err) => Err(err),
-//             }
-//         }
-//     }
-// }
 
 struct Api;
 #[OpenApi]
