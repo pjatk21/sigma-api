@@ -99,11 +99,7 @@ async fn custom_err(err: poem::Error) -> impl IntoResponse {
 async fn auth<E: Endpoint>(endpoint: E, request: Request) -> Result<Response> {
     if let Some(auth_code) = request.header("Authorization") {
         if let Ok(auth_key) = std::env::var("AUTH_KEY") {
-            if format!("Bearer {}", auth_key) != auth_code {
-                Err(poem::error::Unauthorized(ApiError {
-                    cause: "Bad token".to_string(),
-                }))
-            } else {
+            if format!("Bearer {}", auth_key) == auth_code {
                 let res = endpoint.call(request).await;
                 match res {
                     Ok(resp) => {
@@ -112,6 +108,10 @@ async fn auth<E: Endpoint>(endpoint: E, request: Request) -> Result<Response> {
                     }
                     Err(err) => Err(err),
                 }
+            } else {
+                Err(poem::error::Unauthorized(ApiError {
+                    cause: "Bad token".to_string(),
+                }))
             }
         } else {
             panic!("No auth key provided! Restart GeckoDriver Docker container!");
