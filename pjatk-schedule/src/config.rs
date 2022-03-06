@@ -3,6 +3,37 @@ use std::{error::Error, sync::Arc};
 use mongodb::{options::ClientOptions, Client};
 use thirtyfour::{DesiredCapabilities, PageLoadStrategy, WebDriver};
 
+pub(crate) static ENVIROMENT: Env = Env::new();
+
+#[allow(non_snake_case)]
+pub(crate) struct Env {
+    pub PJATK_SCRAPPER_PORT: &'static str,
+    pub PJATK_API_URL_WITH_PROTOCOL: &'static str,
+    pub MONGO_INITDB_ROOT_USERNAME: &'static str,
+    pub MONGO_INITDB_ROOT_PASSWORD: &'static str,
+    pub MONGO_HOST: &'static str,
+    pub MONGO_PORT: &'static str,
+    pub MONGO_INITDB_DATABASE: &'static str,
+    pub MONGO_INITDB_COLLECTION: &'static str,
+    pub AUTH_KEY: &'static str,
+}
+
+impl Env {
+    pub(crate) const fn new() -> Self {
+        Self {
+            PJATK_SCRAPPER_PORT: "PJATK_SCRAPPER_PORT",
+            PJATK_API_URL_WITH_PROTOCOL: "PJATK_API_URL_WITH_PROTOCOL",
+            MONGO_INITDB_ROOT_USERNAME: "MONGO_INITDB_ROOT_USERNAME",
+            MONGO_INITDB_ROOT_PASSWORD: "MONGO_INITDB_ROOT_PASSWORD",
+            MONGO_HOST: "MONGO_HOST",
+            MONGO_PORT: "MONGO_PORT",
+            MONGO_INITDB_DATABASE: "MONGO_INITDB_DATABASE",
+            MONGO_INITDB_COLLECTION: "MONGO_INITDB_COLLECTION",
+            AUTH_KEY: "AUTH_KEY",
+        }
+    }
+}
+
 pub(crate) struct Config {
     client_db: Client,
     client_webdriver: Arc<WebDriver>,
@@ -15,8 +46,8 @@ impl Config {
         Ok(Self {
             client_db: Config::connect_db().await?,
             client_webdriver: Arc::new(Config::init_pjatk_client().await?),
-            port: std::env::var("PJATK_SCRAPPER_PORT")?.parse()?,
-            server_url_with_protocol: std::env::var("PJATK_API_URL_WITH_PROTOCOL")?,
+            port: std::env::var(ENVIROMENT.PJATK_SCRAPPER_PORT)?.parse()?,
+            server_url_with_protocol: std::env::var(ENVIROMENT.PJATK_API_URL_WITH_PROTOCOL)?,
         })
     }
     pub fn get_db(&self) -> &Client {
@@ -34,10 +65,10 @@ impl Config {
     async fn connect_db() -> Result<Client, Box<dyn Error>> {
         let url = format!(
             "mongodb://{0}:{1}@{2}:{3}",
-            std::env::var("MONGO_INITDB_ROOT_USERNAME")?,
-            std::env::var("MONGO_INITDB_ROOT_PASSWORD")?,
-            std::env::var("MONGO_HOST")?,
-            std::env::var("MONGO_PORT")?,
+            std::env::var(ENVIROMENT.MONGO_INITDB_ROOT_USERNAME)?,
+            std::env::var(ENVIROMENT.MONGO_INITDB_ROOT_PASSWORD)?,
+            std::env::var(ENVIROMENT.MONGO_HOST)?,
+            std::env::var(ENVIROMENT.MONGO_PORT)?,
         );
         let mut client_options = ClientOptions::parse(url).await.expect("Bad mongo url!");
         client_options.app_name = Some("PJATK Schedule".to_string());

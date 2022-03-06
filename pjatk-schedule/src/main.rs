@@ -3,7 +3,7 @@
 use crate::scraper::EntryToSend;
 use api::{Api, ApiError};
 use config::Config;
-
+use config::ENVIROMENT;
 use mongodb::Collection;
 use poem::{
     listener::TcpListener, middleware::TowerLayerCompatExt, Endpoint, EndpointExt, IntoResponse,
@@ -57,11 +57,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 match entry {
                     EntryToSend::Entry(entry) => {
                         let db = coll_db.database(
-                            &std::env::var("MONGO_INITDB_DATABASE")
+                            &std::env::var(ENVIROMENT.MONGO_INITDB_DATABASE)
                                 .expect("Missing env: default database"),
                         );
                         let timetable: Collection<TimeTableEntry> = db.collection(
-                            &std::env::var("MONGO_INITDB_COLLECTION")
+                            &std::env::var(ENVIROMENT.MONGO_INITDB_COLLECTION)
                                 .expect("Missing env: default collection"),
                         );
 
@@ -98,7 +98,7 @@ async fn custom_err(err: poem::Error) -> impl IntoResponse {
 
 async fn auth<E: Endpoint>(endpoint: E, request: Request) -> Result<Response> {
     if let Some(auth_code) = request.header("Authorization") {
-        if let Ok(auth_key) = std::env::var("AUTH_KEY") {
+        if let Ok(auth_key) = std::env::var(ENVIROMENT.AUTH_KEY) {
             if format!("Bearer {}", auth_key) == auth_code {
                 let res = endpoint.call(request).await;
                 match res {
