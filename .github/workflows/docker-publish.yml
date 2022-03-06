@@ -39,28 +39,33 @@ jobs:
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@79abd3f86f79a9d68a23c75a09a9a85889262adf
 
-      - name: Build and push `pjatk-api`
-        id: build-and-push-api
-        uses: whoan/docker-build-with-cache-action@v5
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry
+        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push `pjatk-api`
+        id: build-and-push-api
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
           context: .
-          push_git_tag: true
-          dockerfile: ./${{ env.IMAGE_NAME_1 }}/Dockerfile
-          image_tag: latest
-          image_name: pjatk-api
+          push: true
+          file: ./${{env.IMAGE_NAME_1}}/Dockerfile
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:latest
+            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:${{ github.ref_name }}
       
       - name: Build and push `pjatk-scraper`
         id: build-and-push-scraper
-        uses: whoan/docker-build-with-cache-action@v5
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
           context: .
-          push_git_tag: true
-          dockerfile: ./${{ env.IMAGE_NAME_2 }}/Dockerfile
-          image_tag: latest
-          image_name: pjatk-scraper
+          push: true
+          file: ./${{ env.IMAGE_NAME_2 }}/Dockerfile
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-scraper:latest
+            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-scraper:${{ github.ref_name }}
