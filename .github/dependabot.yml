@@ -10,6 +10,10 @@ updates:
     schedule:
       interval: "daily"
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/pjatk-api/Dockerfile"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "docker"
+    directory: "/pjatk-schedule/Dockerfile"
     schedule:
       interval: "daily"
