@@ -50,7 +50,7 @@ jobs:
           push_git_tag: true
           dockerfile: ./${{ env.IMAGE_NAME_1 }}/Dockerfile
           image_tag: latest
-          image_name: 'pjatk-api'
+          image_name: pjatk-api
       
       - name: Build and push `pjatk-scraper`
         id: build-and-push-scraper
@@ -63,4 +63,4 @@ jobs:
           push_git_tag: true
           dockerfile: ./${{ env.IMAGE_NAME_2 }}/Dockerfile
           image_tag: latest
-          image_name: 'pjatk-scraper'
+          image_name: pjatk-scraper
