@@ -58,6 +58,8 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:latest
             ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       
       - name: Build and push `pjatk-scraper`
         id: build-and-push-scraper
@@ -69,3 +71,5 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-scraper:latest
             ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-scraper:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
