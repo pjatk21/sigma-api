@@ -1,30 +1,17 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
+use api_utils::SigmaApiError;
+use api_utils::SigmaApiResponse;
+use poem_openapi::payload::Json;
 use thirtyfour::WebDriver;
 
 use tokio::sync::mpsc::UnboundedSender;
 
 use poem::web::Data;
-use poem_openapi::{param::Path, payload::PlainText, OpenApi};
+use poem_openapi::{param::Path, OpenApi};
 
-use std::{error::Error, fmt::Display, sync::Arc};
+use std::sync::Arc;
 
 use crate::scraper::{parse_timetable_day, EntryToSend};
-
-#[derive(Debug)]
-pub(crate) struct ApiError {
-    pub cause: String,
-}
-
-impl Display for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::write(f, format_args!("API error: {}", self.cause))
-    }
-}
-
-impl Error for ApiError {
-    fn cause(&self) -> Option<&dyn Error> {
-        None
-    }
-}
 
 pub(crate) struct Api;
 #[OpenApi]
@@ -36,10 +23,13 @@ impl Api {
         tx: Data<&UnboundedSender<EntryToSend>>,
         beginning_date: Path<String>,
         amount_of_days: Path<Option<u8>>,
-    ) -> PlainText<String> {
+    ) -> SigmaApiResponse<String, SigmaApiError> {
         let date = chrono::NaiveDate::parse_from_str(&beginning_date.0, "%Y-%m-%d");
         if date.is_err() {
-            return PlainText("parsing error".to_string());
+            return SigmaApiResponse::InternalError(Json(
+                SigmaApiError::error(500, "Parsing error".to_string(), None)
+                    .expect("Error failed!"),
+            ));
         } else {
             let checked_beginning = date.unwrap();
             if let Some(amount_of_days) = amount_of_days.0 {
@@ -61,6 +51,6 @@ impl Api {
         }
         tx.send(EntryToSend::Quit)
             .expect("Error closing browser! Restart GeckoDriver Docker container!");
-        PlainText("done".to_string())
+        SigmaApiResponse::Found(Json("Done!".to_string()))
     }
 }

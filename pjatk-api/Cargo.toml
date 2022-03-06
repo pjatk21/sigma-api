@@ -26,6 +26,7 @@ chrono = { version = "0.4.19", features = ["serde"] }
 futures = "0.3.21"
 tower = { version = "0.4.12", features = ["limit"] }
 timetable = { path = "../timetable" }
+api-utils = { path = "../api-utils" }
 tracing = "0.1.31"
 tracing-subscriber = "0.3.9"
 # wither="0.9.0"

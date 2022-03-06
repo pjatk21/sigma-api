@@ -1,8 +1,10 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use poem::{
     http::StatusCode,
     web::headers::{self, authorization::Bearer, HeaderMapExt},
     Endpoint, Error, Middleware, Request, Result,
 };
+use tracing::trace;
 
 use crate::config::ENVIROMENT;
 
@@ -24,11 +26,11 @@ impl<E: Endpoint> Middleware<E> for BearerAuth {
     fn transform(&self, ep: E) -> Self::Output {
         BearerAuthEndpoint {
             ep,
-            token: self.token.clone(),
+            token: std::env::var(self.token.clone()).expect("Missing Auth key!"),
         }
     }
 }
-
+#[derive(Debug)]
 pub(crate) struct BearerAuthEndpoint<E> {
     ep: E,
     token: String,
@@ -40,6 +42,7 @@ impl<E: Endpoint> Endpoint for BearerAuthEndpoint<E> {
 
     async fn call(&self, req: Request) -> Result<Self::Output> {
         if let Some(auth) = req.headers().typed_get::<headers::Authorization<Bearer>>() {
+            trace!("{0} == {1} ?", auth.0.token(), self.token);
             if auth.0.token() == self.token {
                 return self.ep.call(req).await;
             }

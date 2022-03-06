@@ -119,7 +119,7 @@ impl TimeTableEntry {
     }
 }
 fn get_mock_entry() -> TimeTableEntry {
-    /// Sample entry
+    // Sample entry
     TimeTableEntry {
         title: Some("Ostatni wykład".to_string()),
         persons: vec![

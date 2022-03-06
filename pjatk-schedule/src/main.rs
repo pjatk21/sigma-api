@@ -1,25 +1,27 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 
 use crate::scraper::EntryToSend;
-use api::{Api, ApiError};
+use api::Api;
+use api_utils::SigmaApiError;
+
 use auth::BearerAuth;
 use config::Config;
 use config::ENVIROMENT;
 use mongodb::Collection;
 use poem::{
-    listener::TcpListener, middleware::TowerLayerCompatExt, EndpointExt, IntoResponse, Result, Route, Server,
+    listener::TcpListener, middleware::TowerLayerCompatExt, EndpointExt, Result, Route, Server,
 };
 use poem_openapi::OpenApiService;
 
 use timetable::TimeTableEntry;
+
 use tracing::Level;
-use tracing::error;
 use tracing_subscriber::FmtSubscriber;
 
 use std::{error::Error, time::Duration};
 
 mod api;
-mod api_response;
+
 mod auth;
 mod config;
 mod scraper;
@@ -29,7 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new().await?;
 
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::TRACE)
+        .with_max_level(Level::INFO)
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
@@ -57,7 +59,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .with(BearerAuth::new())
         .catch_all_error(move |err| {
             tx_clone.send(EntryToSend::Quit).expect("quitting failed!");
-            custom_err(err)
+            SigmaApiError::handle_error(err)
         });
 
     let client_db = config.get_db().clone();
@@ -97,12 +99,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await?;
 
     Ok(())
-}
-
-async fn custom_err(err: poem::Error) -> impl IntoResponse {
-    error!("{}",err);
-    poem::error::InternalServerError(ApiError {
-        cause: err.to_string(),
-    })
-    .as_response()
 }
