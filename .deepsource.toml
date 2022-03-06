@@ -1,6 +1,16 @@
 version = 1
 
 [[analyzers]]
+name = "docker"
+enabled = true
+
+  [analyzers.meta]
+  dockerfile_paths = [
+    "./pjatk-api/Dockerfile",
+    "./pjatk-schedule/Dockerfile"
+  ]
+
+[[analyzers]]
 name = "rust"
 enabled = true
 
