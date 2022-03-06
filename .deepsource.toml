@@ -20,7 +20,3 @@ enabled = true
 [[analyzers]]
 name = "shell"
 enabled = true
-
-[[transformers]]
-name = "rustfmt"
-enabled = true
