@@ -2,7 +2,7 @@
 
 # Sigma API
 
-Backend for [project Sigma](https://github.com/pjatk21/sigma-api)
+Backend for [project Sigma](https://github.com/pjatk21/sigma_pjatk)
 
 ---
 
