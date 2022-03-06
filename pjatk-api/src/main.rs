@@ -9,27 +9,26 @@ use poem_openapi::payload::PlainText;
 use serde::{Deserialize, Serialize};
 use timetable::TimeTableEntry;
 
-use mongodb::{bson::doc, options::ClientOptions, Client, Collection, Cursor};
+use mongodb::{bson::doc, Collection, Cursor};
 
 use poem::{listener::TcpListener, web::Data, Route, Server};
 use poem_openapi::param::Query;
 use poem_openapi::{payload::Json, OpenApi, OpenApiService};
 use poem_openapi::{types::*, Object};
 
+use config::Config;
 use std::error::Error;
 use std::fmt::Display;
 use std::ops::Deref;
 use std::time::Duration;
 
+mod config;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let coll_db = connect_db().await?;
-    let port = std::env::var("PJATK_API_PORT")?;
-    let server_url = format!(
-        "{0}:{1}/api",
-        std::env::var("PJATK_API_URL_WITH_PROTOCOL")?,
-        port
-    );
+    let config = Config::new().await?;
+    let client_db = config.get_db().clone();
+    let port = config.get_port();
+    let server_url = config.get_complete_server_url();
     let api_service = OpenApiService::new(Api, "PJATK Schedule API", "0.2").server(server_url);
     let docs = api_service.redoc();
     let open_api_specs = api_service.spec_endpoint();
@@ -37,7 +36,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest("/", docs)
         .nest("/api", api_service)
         .nest("/openapi.json", open_api_specs)
-        .data(coll_db.clone())
+        .data(client_db.clone())
         .with(tower::limit::RateLimitLayer::new(5, Duration::from_secs(1)).compat())
         .with(poem::middleware::Tracing);
     //     .with(CacheMiddleware::default());
@@ -45,23 +44,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .run(app)
         .await?;
     Ok(())
-}
-
-async fn connect_db() -> Result<Collection<TimeTableEntry>, Box<dyn Error>> {
-    let url = format!(
-        "mongodb://{0}:{1}@{2}:{3}",
-        std::env::var("MONGO_INITDB_ROOT_USERNAME")?,
-        std::env::var("MONGO_INITDB_ROOT_PASSWORD")?,
-        std::env::var("MONGO_HOST")?,
-        std::env::var("MONGO_PORT")?,
-    );
-    let mut client_options = ClientOptions::parse(url).await.expect("Bad mongo url!");
-    client_options.app_name = Some("PJATK Schedule".to_string());
-    let client_db = Client::with_options(client_options).expect("Client failed!");
-    let db = client_db.database(&std::env::var("MONGO_INITDB_DATABASE")?);
-    let coll: Collection<TimeTableEntry> =
-        db.collection(&std::env::var("MONGO_INITDB_COLLECTION")?);
-    Ok(coll)
 }
 
 #[derive(Deserialize, PartialEq, Eq, Hash, Clone)]
@@ -176,7 +158,7 @@ impl Api {
             .expect("find failed!");
             entries = cursor.try_collect().await.expect("collect failed!");
         }
-        
+
         if entries.is_empty() {
             SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
         } else {
