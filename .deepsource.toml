@@ -4,6 +4,13 @@ version = 1
 name = "rust"
 enabled = true
 
+  [analyzers.meta]
+  msrv = "1.59.1"
+
 [[analyzers]]
 name = "shell"
+enabled = true
+
+[[transformers]]
+name = "rustfmt"
 enabled = true
