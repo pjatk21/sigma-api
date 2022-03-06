@@ -16,7 +16,8 @@ on:
       - '**.js'
       - '.dockerignore'
       - '**/Dockerfile'
-
+    paths-ignore:
+      - '.deepsource.toml'
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
