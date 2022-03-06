@@ -21,11 +21,17 @@ use std::error::Error;
 use std::fmt::Display;
 use std::ops::Deref;
 use std::time::Duration;
+use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 
 mod config;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new().await?;
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::TRACE)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber)?;
     let client_db = config.get_db().clone();
     let port = config.get_port();
     let server_url = config.get_complete_server_url();

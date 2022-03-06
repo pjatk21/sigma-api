@@ -29,7 +29,7 @@ impl Env {
 
 pub(crate) struct Config {
     client_db: Client,
-    port: u8,
+    port: u16,
     server_url_with_protocol: String,
 }
 
@@ -47,7 +47,7 @@ impl Config {
     pub fn get_complete_server_url(&self) -> String {
         format!("{0}:{1}", self.server_url_with_protocol, self.port)
     }
-    pub fn get_port(&self) -> u8 {
+    pub fn get_port(&self) -> u16 {
         self.port
     }
     async fn connect_db() -> Result<Client, Box<dyn Error>> {
