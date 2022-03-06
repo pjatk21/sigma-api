@@ -1,12 +1,14 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 
+use api_utils::SigmaApiResponse;
+use api_utils::SigmaApiError;
 use futures::stream::TryStreamExt;
 use mongodb::bson::{Bson, DateTime};
 
 use poem::middleware::TowerLayerCompatExt;
 use poem::EndpointExt;
-use poem_openapi::payload::PlainText;
-use serde::{Deserialize, Serialize};
+
+use serde::Deserialize;
 use timetable::TimeTableEntry;
 
 use mongodb::{bson::doc, Collection, Cursor};
@@ -14,22 +16,21 @@ use mongodb::{bson::doc, Collection, Cursor};
 use poem::{listener::TcpListener, web::Data, Route, Server};
 use poem_openapi::param::Query;
 use poem_openapi::{payload::Json, OpenApi, OpenApiService};
-use poem_openapi::{types::*, Object};
 
 use config::Config;
-use std::error::Error;
-use std::fmt::Display;
+use std::error::Error as StdError;
+
 use std::ops::Deref;
 use std::time::Duration;
-use tracing::Level;
+use tracing::{error, Level};
 use tracing_subscriber::FmtSubscriber;
 
 mod config;
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn StdError>> {
     let config = Config::new().await?;
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::TRACE)
+        .with_max_level(Level::INFO)
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
     let client_db = config.get_db().clone();
@@ -44,8 +45,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest("/openapi.json", open_api_specs)
         .data(client_db.clone())
         .with(tower::limit::RateLimitLayer::new(5, Duration::from_secs(1)).compat())
-        .with(poem::middleware::Tracing);
-    //     .with(CacheMiddleware::default());
+        .with(poem::middleware::Tracing)
+        .catch_all_error(SigmaApiError::handle_error);
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
         .run(app)
         .await?;
@@ -166,10 +167,14 @@ impl Api {
         }
 
         if entries.is_empty() {
-            SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
+            error!("{}", "Empty entries!");
+            SigmaApiResponse::NotFound(Json(
+                SigmaApiError::error(404, "Empty entries!".to_string(), None)
+                    .expect("Error failed!"),
+            ))
         } else {
             entries.sort_by_key(|a| a.get_datetime_beginning());
-            SigmaApiResponse::Found(Json(entries))
+            SigmaApiResponse::FoundMany(Json(entries))
         }
     }
 
@@ -184,9 +189,13 @@ impl Api {
                 .into_iter()
                 .map(|entry| entry.to_string().replace('\"', ""))
                 .collect();
-            SigmaApiResponse::Found(Json(groups))
+            SigmaApiResponse::FoundMany(Json(groups))
         } else {
-            SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
+            error!("{}", "Empty groups!");
+            SigmaApiResponse::NotFound(Json(
+                SigmaApiError::error(404, "Empty groups!".to_string(), None)
+                    .expect("Error failed!"),
+            ))
         }
     }
     /// Get all avaliable tutors
@@ -209,37 +218,13 @@ impl Api {
                     }
                 })
                 .collect();
-            SigmaApiResponse::Found(Json(tutors))
+            SigmaApiResponse::FoundMany(Json(tutors))
         } else {
-            SigmaApiResponse::NotFound(PlainText("Not Found".to_string()))
+            error!("{}", "Empty tutors!");
+            SigmaApiResponse::NotFound(Json(
+                SigmaApiError::error(404, "Empty tutors!".to_string(), None)
+                    .expect("Error failed!"),
+            ))
         }
-    }
-}
-
-#[derive(poem_openapi::ApiResponse)]
-enum SigmaApiResponse<T: Send + ToJSON, E: Send + ToJSON + Error> {
-    #[oai(status = 200)]
-    Found(Json<Vec<T>>),
-    #[oai(status = 404)]
-    NotFound(PlainText<String>),
-    #[oai(status = 500)]
-    InternalError(Json<E>),
-}
-
-#[derive(Object, Serialize, Deserialize, Debug, Clone)]
-struct SigmaApiError {}
-
-impl Error for SigmaApiError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-
-    fn cause(&self) -> Option<&dyn Error> {
-        self.source()
-    }
-}
-impl Display for SigmaApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Internal Server Error")
     }
 }

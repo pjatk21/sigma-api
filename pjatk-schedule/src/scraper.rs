@@ -1,3 +1,4 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::{error::Error, time::Duration};
 
 use kuchiki::traits::TendrilSink;
@@ -15,6 +16,7 @@ pub(crate) enum EntryToSend {
     Quit,
 }
 
+#[tracing::instrument]
 pub(crate) async fn parse_timetable_day(
     web_driver: &WebDriver,
     date: String,
@@ -63,7 +65,7 @@ pub(crate) async fn parse_timetable_day(
         let tooltip_node = kuchiki::parse_html().from_utf8().one(html.as_bytes());
         let entry: timetable::TimeTableEntry = tooltip_node.try_into()?;
         tx.send(EntryToSend::Entry(Box::new(entry)))?;
-        info!("{:#?}", index);
+        info!("{}", index);
     }
     Ok(())
 }

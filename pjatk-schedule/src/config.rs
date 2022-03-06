@@ -1,3 +1,4 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::{error::Error, sync::Arc};
 
 use mongodb::{options::ClientOptions, Client};
