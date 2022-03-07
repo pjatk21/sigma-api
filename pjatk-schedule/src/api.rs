@@ -1,4 +1,5 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
+use api_utils::SigmaApiData;
 use api_utils::SigmaApiError;
 use api_utils::SigmaApiResponse;
 use poem_openapi::payload::Json;
@@ -51,6 +52,6 @@ impl Api {
         }
         tx.send(EntryToSend::Quit)
             .expect("Error closing browser! Restart GeckoDriver Docker container!");
-        SigmaApiResponse::Found(Json("Done!".to_string()))
+        SigmaApiResponse::Found(Json(SigmaApiData::new("Done!".to_string())))
     }
 }

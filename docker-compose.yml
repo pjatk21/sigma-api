@@ -27,8 +27,6 @@ services:
   geckodriver:
     image: instrumentisto/geckodriver:92.0-driver0.29.1
     shm_size: 2g
-    environment:
-      MOZ_HEADLESS: 1
     ports:
       - 4444:4444
     restart: unless-stopped

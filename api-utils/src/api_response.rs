@@ -13,21 +13,35 @@ use std::error::Error as StdError;
 use std::fmt::Display;
 
 #[derive(poem_openapi::ApiResponse)]
-pub enum SigmaApiResponse<T: Send + ToJSON, E: Send + ToJSON + StdError> {
+/// Sigma API Response
+pub enum SigmaApiResponse<T: Send + Sync + ToJSON + ParseFromJSON, E: Send + ToJSON + StdError> {
+    /// Found data
     #[oai(status = 200)]
-    FoundMany(Json<Vec<T>>),
-    #[oai(status = 200)]
-    Found(Json<T>),
+    Found(Json<SigmaApiData<T>>),
+    /// Nothing was found
     #[oai(status = 404)]
     NotFound(Json<E>),
+    /// User send out bad request
     #[oai(status = 400)]
     BadRequest(Json<E>),
+    /// Server encountered internal error
     #[oai(status = 500)]
     InternalError(Json<E>),
 }
+#[derive(Deserialize, Serialize, Debug, Object)]
+#[oai(inline)]
+pub struct SigmaApiData<T: Send + Sync + ToJSON + ParseFromJSON> {
+    data: T,
+}
+
+impl<T: Send + Sync + ToJSON + ParseFromJSON> SigmaApiData<T> {
+    pub fn new(data: T) -> Self {
+        Self { data }
+    }
+}
 
 #[derive(Object, Serialize, Deserialize, Debug, Clone)]
-
+#[oai(inline)]
 pub struct SigmaApiError {
     code: u16,
     name: String,

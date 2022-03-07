@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new().await?;
 
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
+        .with_max_level(Level::TRACE)
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
@@ -39,12 +39,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let server_url = config.get_complete_server_url();
 
     let api_service =
-        OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.2").server(server_url);
+        OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.4.1").server(server_url);
     let docs = api_service.swagger_ui();
     let open_api_specs = api_service.spec_endpoint();
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<EntryToSend>();
-    let tx_clone = tx.clone();
     let client = config.get_webdriver().clone();
 
     let app = Route::new()
@@ -57,10 +56,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .with(tower::buffer::BufferLayer::new(100).compat())
         .with(poem::middleware::Tracing)
         .with(BearerAuth::new())
-        .catch_all_error(move |err| {
-            tx_clone.send(EntryToSend::Quit).expect("quitting failed!");
-            SigmaApiError::handle_error(err)
-        });
+        .catch_all_error(SigmaApiError::handle_error);
 
     let client_db = config.get_db().clone();
     tokio::spawn(async move {

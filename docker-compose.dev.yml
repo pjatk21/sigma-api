@@ -25,15 +25,13 @@ services:
   geckodriver:
     image: instrumentisto/geckodriver:92.0-driver0.29.1
     shm_size: 2g
-    environment:
-      MOZ_HEADLESS: 1
     ports:
       - 4444:4444
     restart: unless-stopped
 
   pjatk-api:
     build:
-      dockerfile: pjatk-api/Dockerfile
+      dockerfile: pjatk-api/debug.Dockerfile
       context: .
     ports:
       - ${PJATK_API_PORT}:${PJATK_API_PORT}
@@ -44,7 +42,7 @@ services:
 
   pjatk-scraper:
     build: 
-      dockerfile: pjatk-schedule/Dockerfile
+      dockerfile: pjatk-schedule/debug.Dockerfile
       context: .
     ports:
       - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}
