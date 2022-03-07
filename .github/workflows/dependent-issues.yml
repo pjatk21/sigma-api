@@ -48,7 +48,7 @@ jobs:
 
           # (Optional) A comma-separated list of keywords. Default
           # "depends on, blocked by"
-          keywords: depends on, blocked by, Blokują, Zależą od
+          keywords: depends on, blocked by, Blokują, Zależy od
 
           # (Optional) A custom comment body. It supports `{{ dependencies }}` token.
           comment: >
