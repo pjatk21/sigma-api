@@ -1,7 +1,8 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 
-use api_utils::SigmaApiResponse;
+use api_utils::SigmaApiData;
 use api_utils::SigmaApiError;
+use api_utils::SigmaApiResponse;
 use futures::stream::TryStreamExt;
 use mongodb::bson::{Bson, DateTime};
 
@@ -33,17 +34,17 @@ async fn main() -> Result<(), Box<dyn StdError>> {
         .with_max_level(Level::INFO)
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
-    let client_db = config.get_db().clone();
+    let coll_db = config.get_collection().await?;
     let port = config.get_port();
     let server_url = config.get_complete_server_url();
-    let api_service = OpenApiService::new(Api, "PJATK Schedule API", "0.2").server(server_url);
+    let api_service = OpenApiService::new(Api, "PJATK Schedule API", "0.4.1").server(server_url);
     let docs = api_service.redoc();
     let open_api_specs = api_service.spec_endpoint();
     let app = Route::new()
         .nest("/", docs)
         .nest("/api", api_service)
         .nest("/openapi.json", open_api_specs)
-        .data(client_db.clone())
+        .data(coll_db.clone())
         .with(tower::limit::RateLimitLayer::new(5, Duration::from_secs(1)).compat())
         .with(poem::middleware::Tracing)
         .catch_all_error(SigmaApiError::handle_error);
@@ -77,7 +78,7 @@ impl Api {
         groups: Query<Option<String>>,
         /// Array of tutors to only search for - seperated by `;`
         tutors: Query<Option<String>>,
-    ) -> SigmaApiResponse<TimeTableEntry, SigmaApiError> {
+    ) -> SigmaApiResponse<Vec<TimeTableEntry>, SigmaApiError> {
         let mut entries: Vec<TimeTableEntry> = vec![];
         if let Some(groups) = groups.deref() {
             for group in groups
@@ -167,14 +168,14 @@ impl Api {
         }
 
         if entries.is_empty() {
-            error!("{}", "Empty entries!");
+            error!("{}", "No entries found!");
             SigmaApiResponse::NotFound(Json(
-                SigmaApiError::error(404, "Empty entries!".to_string(), None)
+                SigmaApiError::error(404, "No entries found!".to_string(), None)
                     .expect("Error failed!"),
             ))
         } else {
             entries.sort_by_key(|a| a.get_datetime_beginning());
-            SigmaApiResponse::FoundMany(Json(entries))
+            SigmaApiResponse::Found(Json(SigmaApiData::new(entries)))
         }
     }
 
@@ -183,17 +184,25 @@ impl Api {
     async fn get_groups(
         &self,
         coll_db: Data<&Collection<TimeTableEntry>>,
-    ) -> SigmaApiResponse<String, SigmaApiError> {
+    ) -> SigmaApiResponse<Vec<String>, SigmaApiError> {
         if let Ok(cursor) = coll_db.distinct("groups", None, None).await {
             let groups: Vec<String> = cursor
                 .into_iter()
                 .map(|entry| entry.to_string().replace('\"', ""))
                 .collect();
-            SigmaApiResponse::FoundMany(Json(groups))
+            if groups.is_empty() {
+                error!("{}", "No groups found!");
+                SigmaApiResponse::NotFound(Json(
+                    SigmaApiError::error(404, "No groups found!".to_string(), None)
+                        .expect("Error failed!"),
+                ))
+            } else {
+                SigmaApiResponse::Found(Json(SigmaApiData::new(groups)))
+            }
         } else {
-            error!("{}", "Empty groups!");
-            SigmaApiResponse::NotFound(Json(
-                SigmaApiError::error(404, "Empty groups!".to_string(), None)
+            error!("{}", "MongoDB error!");
+            SigmaApiResponse::InternalError(Json(
+                SigmaApiError::error(500, "MongoDB Error!".to_string(), None)
                     .expect("Error failed!"),
             ))
         }
@@ -203,7 +212,7 @@ impl Api {
     async fn get_tutors(
         &self,
         coll_db: Data<&Collection<TimeTableEntry>>,
-    ) -> SigmaApiResponse<String, SigmaApiError> {
+    ) -> SigmaApiResponse<Vec<String>, SigmaApiError> {
         if let Ok(cursor) = coll_db.distinct("persons", None, None).await {
             let tutors: Vec<String> = cursor
                 .into_iter()
@@ -218,11 +227,19 @@ impl Api {
                     }
                 })
                 .collect();
-            SigmaApiResponse::FoundMany(Json(tutors))
+            if tutors.is_empty() {
+                error!("{}", "No tutors found!");
+                SigmaApiResponse::NotFound(Json(
+                    SigmaApiError::error(404, "No tutors found!".to_string(), None)
+                        .expect("Error failed!"),
+                ))
+            } else {
+                SigmaApiResponse::Found(Json(SigmaApiData::new(tutors)))
+            }
         } else {
-            error!("{}", "Empty tutors!");
-            SigmaApiResponse::NotFound(Json(
-                SigmaApiError::error(404, "Empty tutors!".to_string(), None)
+            error!("{}", "MongoDB error!");
+            SigmaApiResponse::InternalError(Json(
+                SigmaApiError::error(500, "MongoDB Error!".to_string(), None)
                     .expect("Error failed!"),
             ))
         }

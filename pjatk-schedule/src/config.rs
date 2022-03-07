@@ -58,7 +58,7 @@ impl Config {
         &self.client_webdriver
     }
     pub fn get_complete_server_url(&self) -> String {
-        format!("{0}:{1}", self.server_url_with_protocol, self.port)
+        format!("{0}:{1}/api", self.server_url_with_protocol, self.port)
     }
     pub fn get_port(&self) -> u16 {
         self.port

@@ -39,13 +39,16 @@ pub(crate) struct BearerAuthEndpoint<E> {
 #[poem::async_trait]
 impl<E: Endpoint> Endpoint for BearerAuthEndpoint<E> {
     type Output = E::Output;
-
     async fn call(&self, req: Request) -> Result<Self::Output> {
+        let path = req.uri().path();
+        trace!("{0}", path);
         if let Some(auth) = req.headers().typed_get::<headers::Authorization<Bearer>>() {
             trace!("{0} == {1} ?", auth.0.token(), self.token);
             if auth.0.token() == self.token {
                 return self.ep.call(req).await;
             }
+        } else if req.uri().path() == "/openapi.json" || req.uri().path() == "/" {
+            return self.ep.call(req).await;
         }
         Err(Error::from_status(StatusCode::UNAUTHORIZED))
     }

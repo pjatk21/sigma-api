@@ -1,7 +1,8 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::error::Error;
 
-use mongodb::{options::ClientOptions, Client};
+use mongodb::{options::ClientOptions, Client, Collection};
+use timetable::TimeTableEntry;
 
 pub(crate) static ENVIROMENT: Env = Env::new();
 
@@ -11,6 +12,8 @@ pub(crate) struct Env {
     pub PJATK_API_URL_WITH_PROTOCOL: &'static str,
     pub MONGO_INITDB_ROOT_USERNAME: &'static str,
     pub MONGO_INITDB_ROOT_PASSWORD: &'static str,
+    pub MONGO_INITDB_DATABASE: &'static str,
+    pub MONGO_INITDB_COLLECTION: &'static str,
     pub MONGO_HOST: &'static str,
     pub MONGO_PORT: &'static str,
 }
@@ -20,6 +23,8 @@ impl Env {
         Self {
             PJATK_API_PORT: "PJATK_API_PORT",
             PJATK_API_URL_WITH_PROTOCOL: "PJATK_API_URL_WITH_PROTOCOL",
+            MONGO_INITDB_DATABASE: "MONGO_INITDB_DATABASE",
+            MONGO_INITDB_COLLECTION: "MONGO_INITDB_COLLECTION",
             MONGO_INITDB_ROOT_USERNAME: "MONGO_INITDB_ROOT_USERNAME",
             MONGO_INITDB_ROOT_PASSWORD: "MONGO_INITDB_ROOT_PASSWORD",
             MONGO_HOST: "MONGO_HOST",
@@ -46,7 +51,7 @@ impl Config {
         &self.client_db
     }
     pub fn get_complete_server_url(&self) -> String {
-        format!("{0}:{1}", self.server_url_with_protocol, self.port)
+        format!("{0}:{1}/api", self.server_url_with_protocol, self.port)
     }
     pub fn get_port(&self) -> u16 {
         self.port
@@ -63,5 +68,10 @@ impl Config {
         client_options.app_name = Some("PJATK Schedule".to_string());
         let client_db = Client::with_options(client_options).expect("Client failed!");
         Ok(client_db)
+    }
+    pub async fn get_collection(&self) -> Result<Collection<TimeTableEntry>, Box<dyn Error>> {
+        let db = std::env::var(ENVIROMENT.MONGO_INITDB_DATABASE)?;
+        let coll = std::env::var(ENVIROMENT.MONGO_INITDB_COLLECTION)?;
+        Ok(self.client_db.database(&db).collection(&coll))
     }
 }
