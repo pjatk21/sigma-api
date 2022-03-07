@@ -26,8 +26,8 @@ impl Api {
     ) -> SigmaApiResponse<String, SigmaApiError> {
         let date = chrono::NaiveDate::parse_from_str(&beginning_date.0, "%Y-%m-%d");
         if date.is_err() {
-            return SigmaApiResponse::InternalError(Json(
-                SigmaApiError::error(500, "Parsing error".to_string(), None)
+            return SigmaApiResponse::BadRequest(Json(
+                SigmaApiError::error(400, "Parsing error".to_string(), None)
                     .expect("Error failed!"),
             ));
         } else {

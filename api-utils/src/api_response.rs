@@ -20,6 +20,8 @@ pub enum SigmaApiResponse<T: Send + ToJSON, E: Send + ToJSON + StdError> {
     Found(Json<T>),
     #[oai(status = 404)]
     NotFound(Json<E>),
+    #[oai(status = 400)]
+    BadRequest(Json<E>),
     #[oai(status = 500)]
     InternalError(Json<E>),
 }
