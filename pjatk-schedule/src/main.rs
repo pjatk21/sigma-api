@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let server_url = config.get_complete_server_url();
 
     let api_service =
-        OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.4.1").server(server_url);
+        OpenApiService::new(Api, "PJATK Schedule Scrapper API", "0.4.2").server(server_url);
     let docs = api_service.swagger_ui();
     let open_api_specs = api_service.spec_endpoint();
 
