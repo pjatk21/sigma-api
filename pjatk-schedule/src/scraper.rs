@@ -6,7 +6,7 @@ use thirtyfour::{
     prelude::{ElementQueryable, ElementWaitable},
     By, Keys, WebDriver,
 };
-use timetable::TimeTableEntry;
+use timetable::timetable::TimeTableEntry;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 
@@ -63,7 +63,7 @@ pub(crate) async fn parse_timetable_day(
             .await?;
         let html = tooltip_element.inner_html().await?;
         let tooltip_node = kuchiki::parse_html().from_utf8().one(html.as_bytes());
-        let entry: timetable::TimeTableEntry = tooltip_node.try_into()?;
+        let entry: TimeTableEntry = tooltip_node.try_into()?;
         tx.send(EntryToSend::Entry(Box::new(entry)))?;
         info!("{}", index);
     }

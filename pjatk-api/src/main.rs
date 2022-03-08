@@ -10,7 +10,7 @@ use poem::middleware::TowerLayerCompatExt;
 use poem::EndpointExt;
 
 use serde::Deserialize;
-use timetable::TimeTableEntry;
+use timetable::timetable::TimeTableEntry;
 
 use mongodb::{bson::doc, Collection, Cursor};
 

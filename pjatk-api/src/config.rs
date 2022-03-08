@@ -2,7 +2,7 @@
 use std::error::Error;
 
 use mongodb::{options::ClientOptions, Client, Collection};
-use timetable::TimeTableEntry;
+use timetable::timetable::TimeTableEntry;
 
 pub(crate) static ENVIROMENT: Env = Env::new();
 

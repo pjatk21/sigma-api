@@ -13,7 +13,7 @@ use poem::{
 };
 use poem_openapi::OpenApiService;
 
-use timetable::TimeTableEntry;
+use timetable::timetable::TimeTableEntry;
 
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
