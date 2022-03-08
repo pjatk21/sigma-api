@@ -8,9 +8,12 @@ use kuchiki::NodeRef;
 use poem_openapi::Object;
 use serde::{Deserialize, Serialize};
 
+
 #[derive(Debug, Serialize, Deserialize, Clone, Object)]
 #[oai(example = "get_mock_entry")]
 pub struct TimeTableEntry {
+    /// HTML id
+    pub html_id: String,
     /// Title of entry
     pub(crate) title: Option<String>,
     /// Persons
@@ -46,6 +49,7 @@ impl TryFrom<NodeRef> for TimeTableEntry {
         let date = get_data(&dom, "#ctl06_DataZajecLabel", "date")?;
         let (datetime_beginning, datetime_ending) = extract_date_from_string(&dom, date)?;
         let result = TimeTableEntry {
+            html_id: "---".to_string(),
             title: get_data_option(&dom, "#ctl06_TytulRezerwacjiLabel"),
             persons: get_multiple_data(
                 &dom,
@@ -121,6 +125,7 @@ impl TimeTableEntry {
 fn get_mock_entry() -> TimeTableEntry {
     // Sample entry
     TimeTableEntry {
+        html_id: "".to_string(),
         title: Some("Ostatni wykład".to_string()),
         persons: vec![
             "Niezgoda Adam".to_string(),

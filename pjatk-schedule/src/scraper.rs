@@ -40,6 +40,7 @@ pub(crate) async fn parse_timetable_day(
     info!("Found {} timetable entries", count);
     let window_rect = web_driver.get_window_rect().await?;
     for (index, element) in good_elements.iter().enumerate() {
+        let html_id = element.id().await?.unwrap();
         let (x, y) = element.rect().await?.icenter();
         if x > window_rect.x || y > window_rect.y || x < 0 || y < 0 {
             element.scroll_into_view().await?;
@@ -63,7 +64,8 @@ pub(crate) async fn parse_timetable_day(
             .await?;
         let html = tooltip_element.inner_html().await?;
         let tooltip_node = kuchiki::parse_html().from_utf8().one(html.as_bytes());
-        let entry: TimeTableEntry = tooltip_node.try_into()?;
+        let mut entry: TimeTableEntry = tooltip_node.try_into()?;
+        entry.html_id = html_id;
         tx.send(EntryToSend::Entry(Box::new(entry)))?;
         info!("{}", index);
     }
