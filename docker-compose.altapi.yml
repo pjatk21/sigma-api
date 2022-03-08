@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  altapi:
+    image: ghcr.io/pjatk21/altapi:new-schema
+    ports:
+      - 4000:4000
+    environment:
+      MONGO_URL: 'mongodb://database/altiapi'
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - database
+  geckodriver:
+    image: instrumentisto/geckodriver:92.0-driver0.29.1
+    shm_size: 2g
+    ports:
+      - 4444:4444
+    restart: unless-stopped
+  scrapper:
+    build: 
+      dockerfile: pjatk-schedule/debug.Dockerfile
+      context: .
+    ports:
+      - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}
+    env_file:
+      - .env
+    depends_on:
+      - geckodriver
+  database:
+    image: mongo:latest
+    restart: unless-stopped

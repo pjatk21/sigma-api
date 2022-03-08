@@ -1,18 +1,17 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::{error::Error, time::Duration};
 
-use kuchiki::traits::TendrilSink;
 use thirtyfour::{
     prelude::{ElementQueryable, ElementWaitable},
     By, Keys, WebDriver,
 };
-use timetable::timetable::TimeTableEntry;
+use timetable::{altapi_timetable::UploadEntry};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 
 #[derive(Debug)]
 pub(crate) enum EntryToSend {
-    Entry(Box<TimeTableEntry>),
+    Entry(Box<UploadEntry>),
     Quit,
 }
 
@@ -63,9 +62,11 @@ pub(crate) async fn parse_timetable_day(
             .first()
             .await?;
         let html = tooltip_element.inner_html().await?;
-        let tooltip_node = kuchiki::parse_html().from_utf8().one(html.as_bytes());
-        let mut entry: TimeTableEntry = tooltip_node.try_into()?;
-        entry.html_id = html_id;
+        //let tooltip_node = kuchiki::parse_html().from_utf8().one(html.as_bytes());
+        let entry: UploadEntry = UploadEntry {
+            html_id,
+            body: html,
+        };
         tx.send(EntryToSend::Entry(Box::new(entry)))?;
         info!("{}", index);
     }

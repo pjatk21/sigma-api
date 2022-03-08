@@ -5,15 +5,12 @@ use api::Api;
 use api_utils::SigmaApiError;
 
 use auth::BearerAuth;
-use config::Config;
-use config::ENVIROMENT;
-use mongodb::Collection;
+use config::{Config, ENVIROMENT};
+
 use poem::{
     listener::TcpListener, middleware::TowerLayerCompatExt, EndpointExt, Result, Route, Server,
 };
 use poem_openapi::OpenApiService;
-
-use timetable::timetable::TimeTableEntry;
 
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -45,7 +42,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<EntryToSend>();
     let client = config.get_webdriver().clone();
-
+    let upload_client = reqwest::Client::new();
     let app = Route::new()
         .nest("/", docs)
         .nest("/api", api_service)
@@ -59,24 +56,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .catch_all_error(SigmaApiError::handle_error);
 
     let client_db = config.get_db().clone();
+    let client_url = upload_client.clone();
     tokio::spawn(async move {
         loop {
             if let Some(entry) = rx.recv().await {
                 match entry {
                     EntryToSend::Entry(entry) => {
-                        let db = client_db.database(
-                            &std::env::var(ENVIROMENT.MONGO_INITDB_DATABASE)
-                                .expect("Missing env: default database"),
+                        let url = format!(
+                            "{0}/v1/timetable/parse",
+                            std::env::var(ENVIROMENT.ALTAPI_URL).expect("No Altapi URL found!")
                         );
-                        let timetable: Collection<TimeTableEntry> = db.collection(
-                            &std::env::var(ENVIROMENT.MONGO_INITDB_COLLECTION)
-                                .expect("Missing env: default collection"),
-                        );
-
-                        timetable
-                            .insert_one(entry, None)
+                        client_url
+                            .post(&url)
+                            .json(&entry)
+                            .header("X-Upload-Key", std::env::var(ENVIROMENT.ALTAPI_KEY).expect("No Aliapi Auth_key found!"))
+                            .send()
                             .await
-                            .expect("Insert failed!");
+                            .expect("Sending failed!");
                     }
                     EntryToSend::Quit => {
                         client
