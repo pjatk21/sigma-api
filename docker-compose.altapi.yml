@@ -2,11 +2,11 @@ version: '3'
 
 services:
   altapi:
-    image: ghcr.io/pjatk21/altapi:new-schema
+    image: ghcr.io/pjatk21/altapi:ws-hypervisor
     ports:
       - 4000:4000
     environment:
-      MONGO_URL: 'mongodb://database/altiapi'
+      MONGO_URL: 'mongodb://database/altapi'
     env_file:
       - .env
     restart: unless-stopped

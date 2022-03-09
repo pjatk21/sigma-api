@@ -5,12 +5,12 @@ use thirtyfour::{
     prelude::{ElementQueryable, ElementWaitable},
     By, Keys, WebDriver,
 };
-use timetable::{altapi_timetable::UploadEntry};
-use tokio::sync::mpsc::UnboundedSender;
+use timetable::altapi_timetable::UploadEntry;
+use tokio::sync::broadcast::Sender;
 use tracing::info;
 
-#[derive(Debug)]
-pub(crate) enum EntryToSend {
+#[derive(Debug, Clone)]
+pub enum EntryToSend {
     Entry(Box<UploadEntry>),
     Quit,
 }
@@ -19,7 +19,7 @@ pub(crate) enum EntryToSend {
 pub(crate) async fn parse_timetable_day(
     web_driver: &WebDriver,
     date: String,
-    tx: UnboundedSender<EntryToSend>,
+    tx: Sender<EntryToSend>,
 ) -> Result<(), Box<dyn Error>> {
     let date_input = web_driver
         .find_element(By::Id("DataPicker_dateInput"))
@@ -62,7 +62,6 @@ pub(crate) async fn parse_timetable_day(
             .first()
             .await?;
         let html = tooltip_element.inner_html().await?;
-        //let tooltip_node = kuchiki::parse_html().from_utf8().one(html.as_bytes());
         let entry: UploadEntry = UploadEntry {
             html_id,
             body: html,

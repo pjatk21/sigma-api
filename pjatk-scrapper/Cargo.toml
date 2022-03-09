@@ -1,5 +1,5 @@
 [package]
-name = "pjatk-schedule"
+name = "pjatk-scrapper"
 version = "0.1.0"
 edition = "2021"
 
@@ -17,22 +17,15 @@ tokio = { version = "1.17.0", default-features = false, features = [
     "rt",
     "parking_lot",
 ] }
+# TODO: Is SocketIO connection going to be encrypted?
+rust_socketio = "0.3.0"
 parking_lot = { version = "0.12.0", features = ["nightly"] }
 kuchiki = "0.8.1"
-# mimalloc = "0.1.28"
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.79"
 mongodb = "2.1.0"
-poem = { version = "1.3.10", features = ["tower-compat"] }
-poem-openapi = { version = "1.3.10", features = ["swagger-ui", "chrono"] }
 chrono = { version = "0.4.19", features = ["serde"] }
 futures = "0.3.21"
 timetable = { path = "../timetable" }
-api-utils = { path = "../api-utils" }
-tower = { version = "0.4.12", features = ["limit"] }
 tracing = "0.1.31"
 tracing-subscriber = "0.3.9"
-reqwest = { version = "0.11.9", default-features = false, features = [
-    "rustls-tls-webpki-roots",
-] }
-# wither = "0.9.0"

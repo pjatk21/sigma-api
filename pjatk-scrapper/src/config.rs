@@ -17,7 +17,7 @@ pub(crate) struct Env {
     pub MONGO_INITDB_DATABASE: &'static str,
     pub MONGO_INITDB_COLLECTION: &'static str,
     pub ALTAPI_URL:&'static str,
-    pub ALTAPI_KEY:&'static str,
+    // pub ALTAPI_KEY:&'static str,
     pub AUTH_KEY: &'static str,
 }
 
@@ -34,7 +34,7 @@ impl Env {
             MONGO_INITDB_COLLECTION: "MONGO_INITDB_COLLECTION",
             AUTH_KEY: "AUTH_KEY",
             ALTAPI_URL: "ALTAPI_URL",
-            ALTAPI_KEY: "ALTAPI_KEY"
+            // ALTAPI_KEY: "ALTAPI_KEY"
         }
     }
 }
