@@ -21,14 +21,14 @@ COPY --from=planner planner/recipe.json recipe.json
 RUN cargo chef cook --recipe-path recipe.json
 
 COPY . /builder/
-RUN cargo build -p pjatk-schedule
+RUN cargo build -p pjatk-scrapper
 
 FROM debian:bullseye-slim AS runner
 
 WORKDIR /usr/local/bin/
 
-COPY --from=builder builder/target/debug/pjatk-schedule /usr/local/bin/
+COPY --from=builder builder/target/debug/pjatk-scrapper /usr/local/bin/
 
 RUN rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["pjatk-schedule"]
+ENTRYPOINT ["pjatk-scrapper"]
