@@ -1,18 +1,11 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
+#![allow(non_snake_case)]
 
 use serde::{Deserialize, Serialize};
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HypervisorRequest {
-    scrapper: String,
-    command: HypervisorCommand,
-}
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub enum HypervisorCommand {
-    Disconnect,
-    Exit,
-    Scrap,
-    Queue,
-    Cancel,
+pub struct HypervisorCommand {
+    pub scrapStart:String,
+    pub scrapUntil:String,
+    pub limit: Option<usize>,
+    pub skip: Option<usize>
 }

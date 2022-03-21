@@ -17,13 +17,11 @@ tokio = { version = "1.17.0", default-features = false, features = [
     "rt",
     "parking_lot",
 ] }
-# TODO: Is SocketIO connection going to be encrypted?
-rust_socketio = "0.3.0"
+tokio-tungstenite = "0.17.1"
 parking_lot = { version = "0.12.0", features = ["nightly"] }
 kuchiki = "0.8.1"
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.79"
-mongodb = "2.1.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 futures = "0.3.21"
 timetable = { path = "../timetable" }

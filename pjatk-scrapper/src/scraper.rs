@@ -7,10 +7,14 @@ use thirtyfour::{
 };
 use timetable::altapi_timetable::UploadEntry;
 use tokio::sync::broadcast::Sender;
+
 use tracing::info;
+
+use crate::api::HypervisorCommand;
 
 #[derive(Debug, Clone)]
 pub enum EntryToSend {
+    HypervisorCommand(HypervisorCommand),
     Entry(Box<UploadEntry>),
     Quit,
 }
@@ -39,7 +43,7 @@ pub(crate) async fn parse_timetable_day(
     info!("Found {} timetable entries", count);
     let window_rect = web_driver.get_window_rect().await?;
     for (index, element) in good_elements.iter().enumerate() {
-        let html_id = element.id().await?.unwrap();
+        let htmlId = element.id().await?.unwrap();
         let (x, y) = element.rect().await?.icenter();
         if x > window_rect.x || y > window_rect.y || x < 0 || y < 0 {
             element.scroll_into_view().await?;
@@ -63,7 +67,7 @@ pub(crate) async fn parse_timetable_day(
             .await?;
         let html = tooltip_element.inner_html().await?;
         let entry: UploadEntry = UploadEntry {
-            html_id,
+            htmlId,
             body: html,
         };
         tx.send(EntryToSend::Entry(Box::new(entry)))?;
