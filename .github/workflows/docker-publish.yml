@@ -8,7 +8,7 @@ name: Docker CI
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, altapi ]
     paths:
       - '**/Cargo.toml'
       - '.cargo/config.toml'
