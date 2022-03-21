@@ -1413,7 +1413,7 @@ dependencies = [
 
 [[package]]
 name = "pjatk-scrapper"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "chrono",
  "futures",
