@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HypervisorCommand {
-    pub scrapStart:String,
+    pub scrapStart:Option<String>,
     pub scrapUntil:String,
     pub limit: Option<usize>,
     pub skip: Option<usize>

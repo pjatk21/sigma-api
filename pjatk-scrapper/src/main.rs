@@ -4,7 +4,7 @@
 use crate::scraper::EntryToSend;
 
 use api::HypervisorCommand;
-use chrono::NaiveDate;
+use chrono::{Utc, DateTime};
 use config::{Config, ENVIROMENT};
 use futures::{StreamExt, SinkExt};
 use scraper::parse_timetable_day;
@@ -111,10 +111,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
         while let Ok(entry) = rx.recv().await {
             match entry {
                 EntryToSend::HypervisorCommand(hypervisor_command) => {
-                    let date_first = NaiveDate::parse_from_str(&hypervisor_command.scrapStart, "%Y-%m-%d").expect("");
-                    for date in date_first.iter_days().skip(hypervisor_command.skip.unwrap_or(0)).take(hypervisor_command.limit.unwrap_or(0)) {
+                    let date_first = DateTime::parse_from_rfc3339(&hypervisor_command.scrapStart.unwrap_or_else(|| Utc::now().to_rfc3339())).expect("Bad DateTime format start!");
+                    let date_last = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil).expect("Bad DateTime format until!");
+                    for date in date_first
+                                            .naive_local()
+                                            .date()
+                                            .iter_days()
+                                            .skip(
+                                                hypervisor_command.skip.unwrap_or(0)
+                                            )
+                                            .take(
+                                                hypervisor_command.limit.unwrap_or_else( || {
+                                                    (date_last-date_first)
+                                                    .num_days()
+                                                    .try_into()
+                                                    .expect("Negative time span!")
+                                                })
+                                            ) {
                         let date_str = date.format("%Y-%m-%d").to_string();
-                        parse_timetable_day(&client,date_str,tx.clone()).await.expect("");
+                        parse_timetable_day(&client,date_str,tx.clone()).await.expect("Parsing failed!");
                     }
                 },
                 EntryToSend::Quit => {
