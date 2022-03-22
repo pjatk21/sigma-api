@@ -4,7 +4,7 @@
 use crate::scraper::EntryToSend;
 
 use api::HypervisorCommand;
-use chrono::{Utc, DateTime};
+use chrono::{DateTime};
 use config::{Config, ENVIROMENT};
 use futures::{StreamExt, SinkExt};
 use scraper::parse_timetable_day;
@@ -126,30 +126,31 @@ async fn main() -> Result<(), Box<dyn Error>> {
         while let Ok(entry) = rx.recv().await {
             match entry {
                 EntryToSend::HypervisorCommand(hypervisor_command) => {
-                    let date_first = DateTime::parse_from_rfc3339(&hypervisor_command.scrapStart.unwrap_or_else(|| Utc::now().to_rfc3339())).expect("Bad DateTime format start!");
-                    let date_last = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil).expect("Bad DateTime format until!");
-                    for date in date_first
-                                            .naive_local()
-                                            .date()
-                                            .iter_days()
-                                            .skip(
-                                                hypervisor_command.skip.unwrap_or(0)
-                                            )
-                                            .take(
-                                                hypervisor_command.limit.unwrap_or_else( || {
-                                                    (date_last-date_first)
-                                                    .num_days()
-                                                    .try_into()
-                                                    .expect("Negative time span!")
-                                                })
-                                            ) {
+                    let date = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil).expect("Bad DateTime format until!");
+                    // let date_last = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil).expect("Bad DateTime format until!");
+                    // while let Some(date) = futures::stream::iter(date_first
+                    //                         .naive_local()
+                    //                         .date()
+                    //                         .iter_days()
+                    //                         .skip(
+                    //                             hypervisor_command.skip.unwrap_or(0)
+                    //                         )
+                    //                         .take(
+                    //                             hypervisor_command.limit.unwrap_or_else( || {
+                    //                                 (date_last-date_first)
+                    //                                 .num_days()
+                    //                                 .try_into()
+                    //                                 .expect("Negative time span!")
+                    //                             })
+                    //                         )).next().await
+                    // {
                         let date_str = date.format("%Y-%m-%d").to_string();
                         client.refresh().await.expect("Refreshing page failed!");
                         parse_timetable_day(&client,date_str,tx.clone()).await.expect("Parsing failed!");
-                    }
+                    // }
                     let span = info_span!("Parsing entries");
                     span.in_scope(|| {
-                        info!("Scrapping ended!: {} --> {}",date_first,date_last);
+                        info!("Scrapping ended!: {}",date);
                     });
                     tx.send(EntryToSend::HypervisorFinish("finished")).expect("`finish`-ing failed!");
                 },
