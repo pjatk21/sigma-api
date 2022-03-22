@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let tx_command = tx.clone();
 
     // Receiving thread
-    tokio::spawn(async move {
+    let receive_handle = tokio::spawn(async move {
         let span = info_span!("Receiving WebSocket data");
         while let Some(resp) = stream.next().await {
             match resp {
@@ -73,7 +73,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut rx_send = tx.subscribe();
     // Sending thread
-    tokio::spawn(async move {
+    let send_handle = tokio::spawn(async move {
         while let Ok(entry) = rx_send.recv().await {
             match entry {
                 EntryToSend::Entry(entry) => {
@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     // Parsing thread
-    tokio::spawn(async move {
+    let parse_handle = tokio::spawn(async move {
         while let Ok(entry) = rx.recv().await {
             match entry {
                 EntryToSend::HypervisorCommand(hypervisor_command) => {
@@ -130,6 +130,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         }
     });
+
+    receive_handle.await.expect("Handling receive thread failed!");
+    send_handle.await.expect("Handling send thread failed!");
+    parse_handle.await.expect("Handling parse thread failed!");
 
     Ok(())
 }
