@@ -17,12 +17,18 @@ services:
       dockerfile: pjatk-scrapper/debug.Dockerfile
       context: .
     environment:
-      ALTAPI_GATEWAY: 'ws://bridge:9090/'
+      MANAGER_URL: 'ws://bridge:9090/'
     depends_on:
       - geckodriver
+      - bridge
   bridge:
     image: ghcr.io/pjatk21/alt-scrap:sigma-bridge
-    entrypoint: yarn cli init --ignore && yarn cli bridge --gateway ws://altapi:4010/
+    # entrypoint: yarn cli init
+    entrypoint: yarn cli bridge --gateway ws://altapi:4010/
+    volumes:
+      - './altapi/passport:/app/passport'
+    depends_on:
+      - altapi
   database:
     image: mongo:latest
     restart: unless-stopped
