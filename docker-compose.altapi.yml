@@ -23,8 +23,9 @@ services:
       - bridge
   bridge:
     image: ghcr.io/pjatk21/alt-scrap:sigma-bridge
-    # entrypoint: yarn cli init
-    entrypoint: yarn cli bridge --gateway ws://altapi:4010/
+    environment:
+      - ALTAPI_GATEWAY=ws://altapi:4010/
+    entrypoint: yarn start:bridge
     volumes:
       - './altapi/passport:/app/passport'
     depends_on:
