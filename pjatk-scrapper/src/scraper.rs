@@ -16,6 +16,7 @@ use crate::api::HypervisorCommand;
 pub enum EntryToSend {
     HypervisorCommand(HypervisorCommand),
     Entry(Box<UploadEntry>),
+    HypervisorFinish(&'static str),
     Quit,
 }
 

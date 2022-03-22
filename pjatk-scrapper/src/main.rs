@@ -93,7 +93,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         }
                     }
                 },
-                
+                EntryToSend::HypervisorFinish(text) => {
+                    let span = info_span!("Receiving entries to send");   
+                    match sink.send(Message::Text(text.to_string())).await {
+                        Ok(_) => {
+                            span.in_scope(|| {
+                                info!("`finish` cmd sended!");
+                            });
+                        }
+                        Err(err) => {
+                            let error_span = error_span!("Receiving entries to send");
+                            error_span.in_scope(|| {
+                                error!("Sending failed!: {}", err);
+                            });
+                        }
+                    }
+                }
                 EntryToSend::Quit => {
                     let span = info_span!("Receiving entries to send");
                     span.in_scope(|| {
@@ -131,9 +146,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         let date_str = date.format("%Y-%m-%d").to_string();
                         parse_timetable_day(&client,date_str,tx.clone()).await.expect("Parsing failed!");
                     }
+                    let span = info_span!("Parsing entries");
+                    span.in_scope(|| {
+                        info!("Scrapping ended!: {} --> {}",date_first,date_last);
+                    });
+                    tx.send(EntryToSend::HypervisorFinish("finished")).expect("`finish`-ing failed!");
                 },
                 EntryToSend::Quit => {
-                    let span = info_span!("Receiving entries to send");
+                    let span = info_span!("Parsing entries");
                     span.in_scope(|| {
                         info!("Closing scraper thread!");
                     });
