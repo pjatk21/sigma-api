@@ -2,32 +2,27 @@ version: '3'
 
 services:
   altapi:
-    image: ghcr.io/pjatk21/altapi:ws-hypervisor
+    image: ghcr.io/pjatk21/altapi:main
     ports:
       - 4000:4000
     environment:
       MONGO_URL: 'mongodb://database/altapi'
-    env_file:
-      - .env
-    restart: unless-stopped
     depends_on:
       - database
   geckodriver:
     image: instrumentisto/geckodriver:92.0-driver0.29.1
     shm_size: 2g
-    ports:
-      - 4444:4444
-    restart: unless-stopped
   scrapper:
     build: 
-      dockerfile: pjatk-schedule/debug.Dockerfile
+      dockerfile: pjatk-scrapper/debug.Dockerfile
       context: .
-    ports:
-      - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}
-    env_file:
-      - .env
+    environment:
+      ALTAPI_GATEWAY: 'ws://bridge:9090/'
     depends_on:
       - geckodriver
+  bridge:
+    image: ghcr.io/pjatk21/alt-scrap:sigma-bridge
+    entrypoint: yarn cli init --ignore && yarn cli bridge --gateway ws://altapi:4010/
   database:
     image: mongo:latest
     restart: unless-stopped
