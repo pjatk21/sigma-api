@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
   scrapper:
     build: 
-      dockerfile: pjatk-schedule/debug.Dockerfile
+      dockerfile: pjatk-scrapper/debug.Dockerfile
       context: .
     ports:
       - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}

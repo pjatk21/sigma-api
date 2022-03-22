@@ -8,7 +8,7 @@ name: Docker CI
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main,altapi ]
     paths:
       - '**/Cargo.toml'
       - '.cargo/config.toml'
@@ -21,8 +21,8 @@ env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
   REG_USER: "pjatk21"
-  IMAGE_NAME_1: "pjatk-api"
-  IMAGE_NAME_2: "pjatk-schedule"
+  # IMAGE_NAME_1: "pjatk-api"
+  IMAGE_NAME_2: "pjatk-scrapper"
 
 # Gonna die because of this 💀
 permissions: write-all
@@ -48,21 +48,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push `pjatk-api`
-        id: build-and-push-api
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
-          context: .
-          push: true
-          file: ./${{env.IMAGE_NAME_1}}/Dockerfile
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:latest
-            ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # - name: Build and push `pjatk-api`
+      #   id: build-and-push-api
+      #   uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+      #   with:
+      #     context: .
+      #     push: true
+      #     file: ./${{env.IMAGE_NAME_1}}/Dockerfile
+      #     tags: |
+      #       ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:latest
+      #       ${{ env.REGISTRY }}/${{ env.REG_USER }}/pjatk-api:${{ github.ref_name }}
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
       
-      - name: Build and push `pjatk-scraper`
-        id: build-and-push-scraper
+      - name: Build and push `pjatk-scrapper`
+        id: build-and-push-scrapper
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
