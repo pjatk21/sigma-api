@@ -10,7 +10,6 @@ use futures::{StreamExt, SinkExt};
 use scraper::parse_timetable_day;
 use tokio_tungstenite::tungstenite::Message;
 use tracing::{Level, info_span, error_span, error, info};
-use tracing_subscriber::FmtSubscriber;
 
 use std::error::Error;
 
@@ -22,10 +21,16 @@ mod scraper;
 async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new().await?;
 
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+    tracing_subscriber::fmt().with_max_level(Level::TRACE).init();
+    
+    std::panic::set_hook(Box::new(|panic| {
+        let error_span = error_span!("Program panics!");
+        error_span.in_scope(|| {
+            error!("Panic: {}", panic);
+        });
+    }));
+
+    panic!("Test panic!");
 
     let (tx, mut rx) = tokio::sync::broadcast::channel::<EntryToSend>(32);
 
@@ -54,7 +59,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             info!("Closing: {}", close_frame);
                         });
                         tx_command.send(EntryToSend::Quit).expect("Closing failed!");
-                        std::process::exit(0);
+                        break;
                     }
                     _ => {}
                 },
@@ -63,7 +68,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     error_span.in_scope(|| {
                         error!("Error: {}", err);
                     });
-                    
                 }
             }
         }
@@ -97,7 +101,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     span.in_scope(|| {
                         info!("Closing scraper thread!");
                     });
-                    std::process::exit(0);
+                    break;
                 }
                 _ => {}
             }
@@ -120,7 +124,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     span.in_scope(|| {
                         info!("Closing scraper thread!");
                     });
-                    std::process::exit(0);
+                    break;
                 },
                 _ => {}
             }
