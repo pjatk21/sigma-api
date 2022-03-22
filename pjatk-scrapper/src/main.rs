@@ -6,7 +6,7 @@ use crate::scraper::EntryToSend;
 use api::HypervisorCommand;
 use chrono::{DateTime};
 use config::{Config, ENVIROMENT};
-use futures::{StreamExt, SinkExt};
+use futures::{StreamExt, SinkExt, TryFutureExt};
 use scraper::parse_timetable_day;
 use tokio_tungstenite::tungstenite::Message;
 use tracing::{Level, info_span, error_span, error, info};
@@ -127,32 +127,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
             match entry {
                 EntryToSend::HypervisorCommand(hypervisor_command) => {
                     let date = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil).expect("Bad DateTime format until!");
-                    // let date_last = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil).expect("Bad DateTime format until!");
-                    // while let Some(date) = futures::stream::iter(date_first
-                    //                         .naive_local()
-                    //                         .date()
-                    //                         .iter_days()
-                    //                         .skip(
-                    //                             hypervisor_command.skip.unwrap_or(0)
-                    //                         )
-                    //                         .take(
-                    //                             hypervisor_command.limit.unwrap_or_else( || {
-                    //                                 (date_last-date_first)
-                    //                                 .num_days()
-                    //                                 .try_into()
-                    //                                 .expect("Negative time span!")
-                    //                             })
-                    //                         )).next().await
-                    // {
-                        let date_str = date.format("%Y-%m-%d").to_string();
-                        client.refresh().await.expect("Refreshing page failed!");
-                        parse_timetable_day(&client,date_str,tx.clone()).await.expect("Parsing failed!");
-                    // }
-                    let span = info_span!("Parsing entries");
-                    span.in_scope(|| {
-                        info!("Scrapping ended!: {}",date);
-                    });
-                    tx.send(EntryToSend::HypervisorFinish("finished")).expect("`finish`-ing failed!");
+                    let date_str = date.format("%Y-%m-%d").to_string();
+                    parse_timetable_day(&client,date_str,tx.clone()).and_then(|_| async {
+                        let span = info_span!("Parsing entries");
+                        span.in_scope(|| {
+                            info!("Scrapping ended!: {}",date);
+                        });
+                        
+                        tx.send(EntryToSend::HypervisorFinish("finished")).expect("`finish`-ing failed!");
+                        Ok(())
+                    }).await.expect("Parsing failed!");
+                    client.refresh().await.expect("Refreshing page failed!");
                 },
                 EntryToSend::Quit => {
                     let span = info_span!("Parsing entries");

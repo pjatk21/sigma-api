@@ -8,7 +8,7 @@ use thirtyfour::{
 use timetable::altapi_timetable::UploadEntry;
 use tokio::sync::broadcast::Sender;
 
-use tracing::info;
+use tracing::{info, warn, trace};
 
 use crate::api::HypervisorCommand;
 
@@ -29,12 +29,16 @@ pub(crate) async fn parse_timetable_day(
     let date_input = web_driver
         .find_element(By::Id("DataPicker_dateInput"))
         .await?;
-
-    date_input.click().await?;
-    date_input.send_keys(Keys::Control + "a").await?;
-    date_input.send_keys(date.clone()).await?;
-    date_input.send_keys(Keys::Enter).await?;
-
+    let text = date_input.get_property("value").await?.unwrap_or_else(|| "".to_string());
+    trace!("Found date: {}",text);
+    if date != text {
+        date_input.click().await?;
+        date_input.send_keys(Keys::Control + "a").await?;
+        date_input.send_keys(date.clone()).await?;
+        date_input.send_keys(Keys::Enter).await?;
+    } else {
+        warn!("Can't update timetable, when given date is representing this day!");
+    }
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     let table = web_driver.find_element(By::Id("ZajeciaTable")).await?;
