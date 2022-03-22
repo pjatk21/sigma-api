@@ -36,9 +36,7 @@ impl Env {
 }
 
 pub(crate) struct Config {
-    
     client_webdriver: Arc<WebDriver>,
-    
 }
 
 impl Config {

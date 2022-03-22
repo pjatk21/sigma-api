@@ -8,10 +8,11 @@ use chrono::{DateTime};
 use config::{Config, ENVIROMENT};
 use futures::{StreamExt, SinkExt, TryFutureExt};
 use scraper::parse_timetable_day;
+use thirtyfour::{By, Keys};
 use tokio_tungstenite::tungstenite::Message;
 use tracing::{Level, info_span, error_span, error, info};
 
-use std::error::Error;
+use std::{error::Error, sync::Arc};
 
 mod api;
 mod config;
@@ -22,18 +23,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new().await?;
 
     tracing_subscriber::fmt().with_max_level(Level::TRACE).init();
-    
-    std::panic::set_hook(Box::new(|panic| {
-        let error_span = error_span!("Program panics!");
-        error_span.in_scope(|| {
-            error!("Panic: {}", panic);
-        });
-    }));
 
     let (tx, mut rx) = tokio::sync::broadcast::channel::<EntryToSend>(32);
 
     let client = config.get_webdriver().clone();
-
+    
     let url = std::env::var(ENVIROMENT.MANAGER_URL).expect("No Altapi URL found!");
 
     let (websocket,_) = tokio_tungstenite::connect_async(&url).await.expect("WebSocket connection failed!");
@@ -41,7 +35,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (mut sink, mut stream) = websocket.split();
 
     let tx_command = tx.clone();
-
+    let tx_panic = tx.clone();
+    std::panic::set_hook(Box::new(move |panic| {
+            let error_span = error_span!("Program panics!");
+            error_span.in_scope(|| {
+                error!("Panic: {}", panic);
+            });
+            tx_panic.send(EntryToSend::Quit).map_err(|_| {});
+        }));
     // Receiving thread
     let receive_handle = tokio::spawn(async move {
         let span = info_span!("Receiving WebSocket data");
@@ -72,6 +73,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     let mut rx_send = tx.subscribe();
+    let mut client_close = Arc::clone(&client);
     // Sending thread
     let send_handle = tokio::spawn(async move {
         while let Ok(entry) = rx_send.recv().await {
@@ -135,15 +137,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         });
                         
                         tx.send(EntryToSend::HypervisorFinish("finished")).expect("`finish`-ing failed!");
+                        client.refresh().await.expect("Refreshing page failed!");
                         Ok(())
                     }).await.expect("Parsing failed!");
-                    client.refresh().await.expect("Refreshing page failed!");
                 },
                 EntryToSend::Quit => {
                     let span = info_span!("Parsing entries");
                     span.in_scope(|| {
                         info!("Closing scraper thread!");
                     });
+
+                    let window = client.find_element(By::Css("html")).await.expect("Find element failed!");
+                    window.send_keys(Keys::Alt + Keys::F4).await.expect("Close window failed! Stop geckodriver container manually!");
+
                     break;
                 },
                 _ => {}
