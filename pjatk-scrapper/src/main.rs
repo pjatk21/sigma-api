@@ -130,10 +130,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         }
     });
-
-    receive_handle.await.expect("Handling receive thread failed!");
-    send_handle.await.expect("Handling send thread failed!");
-    parse_handle.await.expect("Handling parse thread failed!");
-
+    futures::join!(receive_handle,send_handle,parse_handle);
     Ok(())
 }
