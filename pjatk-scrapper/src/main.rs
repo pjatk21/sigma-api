@@ -144,6 +144,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                                 })
                                             ) {
                         let date_str = date.format("%Y-%m-%d").to_string();
+                        client.refresh().await.expect("Refreshing page failed!");
                         parse_timetable_day(&client,date_str,tx.clone()).await.expect("Parsing failed!");
                     }
                     let span = info_span!("Parsing entries");
