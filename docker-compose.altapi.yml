@@ -17,7 +17,7 @@ services:
       dockerfile: pjatk-scrapper/debug.Dockerfile
       context: .
     environment:
-      MANAGER_URL: 'ws://bridge:9090/'
+      MANAGER_URL: 'ws://bridge:9090'
     depends_on:
       - geckodriver
       - bridge

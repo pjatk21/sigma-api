@@ -30,15 +30,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         });
     }));
 
-    panic!("Test panic!");
-
     let (tx, mut rx) = tokio::sync::broadcast::channel::<EntryToSend>(32);
 
     let client = config.get_webdriver().clone();
 
     let url = std::env::var(ENVIROMENT.MANAGER_URL).expect("No Altapi URL found!");
 
-    let (websocket,_) = tokio_tungstenite::connect_async(&url).await?;
+    let (websocket,_) = tokio_tungstenite::connect_async(&url).await.expect("WebSocket connection failed!");
 
     let (mut sink, mut stream) = websocket.split();
 
