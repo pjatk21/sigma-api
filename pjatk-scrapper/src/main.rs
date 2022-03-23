@@ -61,7 +61,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     async_std::task::sleep(Duration::from_secs(1)).await;
                     count+=1;
                 }
-                
             },
         }
     }
@@ -88,7 +87,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         tx_command.try_broadcast(EntryToSend::Quit).expect("Closing failed!");
                         break;
                     }
-                    _ => {}
+                    _ => {
+                        async_std::task::sleep(Duration::from_nanos(250)).await;
+                    }
                 },
                 Err(err) => {
                     let error_span = error_span!("Receiving WebSocket data");
@@ -148,13 +149,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         });
                         break;
                     }
-                    _ => {}
+                    _ => {
+                        async_std::task::sleep(Duration::from_nanos(250)).await;
+                    }
                 }
             
                 Err(try_recv_error) => {
                     match try_recv_error {
                         TryRecvError::Overflowed(_) => {warn!("Receiver overflow!")},
-                        TryRecvError::Empty => {},
+                        TryRecvError::Empty => {
+                            async_std::task::sleep(Duration::from_nanos(250)).await;
+                        },
                         TryRecvError::Closed => {break;},
                     }       
                 },

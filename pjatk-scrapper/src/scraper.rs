@@ -6,7 +6,7 @@ use thirtyfour::{
     By, Keys, WebDriver,
 };
 use timetable::altapi_timetable::UploadEntry;
-use async_broadcast::Sender;
+use async_broadcast::{Sender, TrySendError};
 
 use tracing::{info, warn, trace};
 
@@ -76,7 +76,12 @@ pub(crate) async fn parse_timetable_day(
             htmlId,
             body: html,
         };
-        tx.try_broadcast(EntryToSend::Entry(Box::new(entry))).expect("Broadcast failed!");
+        while let Err(TrySendError::Full(_)) = 
+        tx.try_broadcast(EntryToSend::Entry(Box::new(entry.clone()))) {
+            warn!("Broadcast failed!, trying again!");
+            async_std::task::sleep(Duration::from_nanos(250)).await;
+
+        }
         info!("{}", index);
     }
     Ok(())
