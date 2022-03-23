@@ -5,6 +5,7 @@ use crate::scraper::EntryToSend;
 
 use api::HypervisorCommand;
 use async_broadcast::TryRecvError;
+use async_std::net::TcpStream;
 use chrono::{DateTime};
 use config::{Config, ENVIROMENT};
 use futures::{StreamExt, SinkExt, TryFutureExt};
@@ -13,14 +14,24 @@ use async_tungstenite::tungstenite::Message;
 use thirtyfour::{Keys, By};
 use tracing::{Level, info_span, error_span, error, info, warn};
 
-use std::error::Error;
+use std::{error::Error, time::Duration};
 
 mod api;
 mod config;
 mod scraper;
 
+static RETRY: u32 = 5;
+
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    std::panic::set_hook(Box::new(move |panic| {
+        let error_span = error_span!("Program panics!");
+        error_span.in_scope(|| {
+            error!("Panic: {:?}", panic);
+        });
+    }));
+
+    
     let config = Config::new().await?;
 
     tracing_subscriber::fmt().with_max_level(Level::TRACE).init();
@@ -32,19 +43,33 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let client = config.get_webdriver().clone();
     
     let url = std::env::var(ENVIROMENT.MANAGER_URL).expect("No Altapi URL found!");
+    let stream: TcpStream;
+    let mut count:u32 = 0;
     
-    let stream = async_std::net::TcpStream::connect(&url.replace("ws://","")).await?;
-    let (websocket,_) = async_tungstenite::client_async(&url,stream).await.expect("WebSocket connection failed!");
+    
+    loop {       
+        match async_std::net::TcpStream::connect(&url.replace("ws://","")).await {
+            Ok(stream_result) => {
+                stream = stream_result;
+                break;
+            },
+            Err(_) => {
+                if count >= RETRY {
+                    panic!("Can't connect after 5 tries!");
+                } else {
+                    warn!("Can't connect, repeating after 1 second...");
+                    async_std::task::sleep(Duration::from_secs(1)).await;
+                    count+=1;
+                }
+                
+            },
+        }
+    }
 
+    let (websocket,_) = async_tungstenite::client_async(&url,stream).await.expect("WebSocket upgrade failed!");
     let (mut sink, mut stream) = websocket.split();
 
-    std::panic::set_hook(Box::new(move |panic| {
-            let error_span = error_span!("Program panics!");
-            error_span.in_scope(|| {
-                error!("Panic: {:?}", panic);
-            });
-        }));
-
+    
     // Receiving thread
     let tx_command = rx.new_sender();
     let receive_handle = async_std::task::spawn(async move {
