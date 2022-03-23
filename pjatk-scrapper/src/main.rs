@@ -12,7 +12,8 @@ use futures::{StreamExt, SinkExt, TryFutureExt};
 use scraper::parse_timetable_day;
 use async_tungstenite::tungstenite::Message;
 use thirtyfour::{Keys, By};
-use tracing::{Level, info_span, error_span, error, info, warn};
+use tracing::{info_span, error_span, error, info, warn};
+use tracing_subscriber::EnvFilter;
 
 use std::{error::Error, time::Duration};
 
@@ -34,7 +35,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     let config = Config::new().await?;
 
-    tracing_subscriber::fmt().with_max_level(Level::TRACE).init();
+    tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).init();
 
     let (_tx, mut rx) = async_broadcast::broadcast::<EntryToSend>(32);
 

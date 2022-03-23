@@ -17,7 +17,10 @@ services:
       dockerfile: pjatk-scrapper/debug.Dockerfile
       context: .
     environment:
-      MANAGER_URL: 'ws://bridge:9090'
+      - MANAGER_URL=ws://bridge:9090 
+      # to enable DEBUG and TRACE logging, replace `info` with either `debug` or `trace`
+      # https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#examples
+      - RUST_LOG=info
     depends_on:
       - geckodriver
       - bridge
