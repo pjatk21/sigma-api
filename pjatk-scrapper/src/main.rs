@@ -10,6 +10,7 @@ use config::{Config, ENVIROMENT};
 use futures::{StreamExt, SinkExt, TryFutureExt};
 use scraper::parse_timetable_day;
 use async_tungstenite::tungstenite::Message;
+use thirtyfour::{Keys, By};
 use tracing::{Level, info_span, error_span, error, info, warn};
 
 use std::error::Error;
@@ -24,7 +25,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing_subscriber::fmt().with_max_level(Level::TRACE).init();
 
-    let (_tx, mut rx) = async_broadcast::broadcast::<EntryToSend>(500);
+    let (_tx, mut rx) = async_broadcast::broadcast::<EntryToSend>(32);
 
     rx.set_overflow(true);
 
@@ -152,7 +153,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             });
                             
                             tx_send.try_broadcast(EntryToSend::HypervisorFinish("finished")).expect("`finish`-ing failed!");
-                            // client.refresh().await.expect("Refreshing page failed!");
+                            client.refresh().await.expect("Refreshing page failed!");
                             Ok(())
                         }).await.expect("Parsing failed!");
                     },
@@ -162,8 +163,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             info!("Closing scraper thread!");
                         });
     
-                        // let window = client.find_element(By::Css("html")).await.expect("Find element failed!");
-                        // window.send_keys(Keys::Alt + Keys::F4).await.expect("Close window failed! Stop geckodriver container manually!");
+                        let window = client.find_element(By::Css("html")).await.expect("Find element failed!");
+                        window.send_keys(Keys::Alt + Keys::F4).await.expect("Close window failed! Stop geckodriver container manually!");
                         break;
                     },
                     _ => {}
