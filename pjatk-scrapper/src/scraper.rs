@@ -6,7 +6,7 @@ use thirtyfour::{
     By, Keys, WebDriver,
 };
 use timetable::altapi_timetable::UploadEntry;
-use tokio::sync::broadcast::Sender;
+use async_broadcast::Sender;
 
 use tracing::{info, warn, trace};
 
@@ -39,7 +39,8 @@ pub(crate) async fn parse_timetable_day(
     } else {
         warn!("Can't update timetable, when given date is representing this day!");
     }
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    async_std::task::sleep(Duration::from_secs(1)).await;
+    
 
     let table = web_driver.find_element(By::Id("ZajeciaTable")).await?;
     let good_elements = table.find_elements(By::Css("tbody td[id*=\";\"]")).await?;
@@ -75,7 +76,7 @@ pub(crate) async fn parse_timetable_day(
             htmlId,
             body: html,
         };
-        tx.send(EntryToSend::Entry(Box::new(entry)))?;
+        tx.try_broadcast(EntryToSend::Entry(Box::new(entry))).expect("Broadcast failed!");
         info!("{}", index);
     }
     Ok(())

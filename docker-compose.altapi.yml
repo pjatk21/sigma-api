@@ -26,8 +26,8 @@ services:
     environment:
       - ALTAPI_GATEWAY=ws://altapi:4010/
     entrypoint: yarn start:bridge
-    volumes:
-      - './altapi/passport:/app/passport'
+    # volumes:
+    #   - './altapi/passport:/app/passport'
     depends_on:
       - altapi
   database:

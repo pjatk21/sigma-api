@@ -3,7 +3,7 @@ FROM rust:slim as chef
 RUN rustup toolchain install nightly
 RUN rustup default nightly
 
-RUN apt-get update -y && apt-get install build-essential lld clang -y && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install build-essential pkg-config lld clang openssl libssl-dev -y && rm -rf /var/lib/apt/lists/*
 
 RUN cargo install cargo-chef
 
