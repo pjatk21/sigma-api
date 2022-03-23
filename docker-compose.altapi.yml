@@ -24,6 +24,7 @@ services:
   bridge:
     image: ghcr.io/pjatk21/alt-scrap:sigma-bridge
     environment:
+      - SCRAPPER_NAME=(bridged) rusty
       - ALTAPI_GATEWAY=ws://altapi:4010/
     entrypoint: yarn start:bridge
     # volumes:
