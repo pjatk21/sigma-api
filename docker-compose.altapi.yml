@@ -14,7 +14,7 @@ services:
     shm_size: 2g
   scrapper:
     build: 
-      dockerfile: pjatk-scrapper/debug.Dockerfile
+      dockerfile: pjatk-scrapper/Dockerfile
       context: .
     environment:
       - MANAGER_URL=ws://bridge:9090 
