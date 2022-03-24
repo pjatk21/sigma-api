@@ -198,12 +198,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         window.send_keys(Keys::Alt + Keys::F4).await.expect("Close window failed! Stop geckodriver container manually!");
                         break;
                     },
-                    _ => {}
+                    _ => {
+                        async_std::task::sleep(Duration::from_nanos(250)).await;
+                    }
                 }
                 Err(try_recv_error) => {
                     match try_recv_error {
                         TryRecvError::Overflowed(_) => {warn!("Receiver overflow!")},
-                        TryRecvError::Empty => {},
+                        TryRecvError::Empty => {
+                            async_std::task::sleep(Duration::from_nanos(250)).await;
+                        },
                         TryRecvError::Closed => {break;},
                     }       
                 },
