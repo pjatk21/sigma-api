@@ -1,21 +1,21 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 
 
-use crate::scraper::EntryToSend;
-
 use api::HypervisorCommand;
+use async_broadcast::RecvError;
 use async_std::net::TcpStream;
-use chrono::{DateTime};
+use chrono::DateTime;
 use config::{Config, ENVIROMENT};
 use crossbeam::utils::Backoff;
 use futures::{StreamExt, SinkExt, TryFutureExt};
-use scraper::parse_timetable_day;
 use async_tungstenite::tungstenite::Message;
 use thirtyfour::{Keys, By};
 use tracing::{info_span, error_span, error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 use std::{error::Error, time::Duration};
+
+use crate::scraper::{EntryToSend, parse_timetable_day};
 
 mod api;
 mod config;
@@ -78,10 +78,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             match resp {
                 Ok(msg) => match msg {
                     Message::Text(json_str) => {
+                        backoff.reset();
                         let cmd: HypervisorCommand = serde_json::from_str(&json_str).expect("Parsing failed!");
                         tx_command.try_broadcast(EntryToSend::HypervisorCommand(cmd)).expect("Sending command failed!");
                     },
                     Message::Close(Some(close_frame)) => {
+                        backoff.reset();
                         span.in_scope(|| {
                             info!("Closing: {}", close_frame);
                         });
@@ -93,6 +95,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                 },
                 Err(err) => {
+                    backoff.reset();
                     let error_span = error_span!("Receiving WebSocket data");
                     error_span.in_scope(|| {
                         error!("Error: {}", err);
@@ -108,51 +111,68 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Sending thread
     let send_handle = async_std::task::spawn(async move {
         let backoff = Backoff::new();
-        while let Ok(entry) = rx_send.recv().await{
-            match entry {
-                EntryToSend::Entry(entry) => {
-                    let span = info_span!("Receiving entries to broadcast");   
-                    let json_string = serde_json::to_string(&entry).expect("Serializing failed!");
-                    match sink.send(Message::Text(json_string)).await {
-                        Ok(_) => {
-                            span.in_scope(|| {
-                                info!("Entry sended!: {}", entry.htmlId);
-                            });
+        loop {
+            let entry_result = rx_send.recv().await;
+            match entry_result {
+                Ok(entry) => match entry {
+                    EntryToSend::Entry(entry) => {
+                        backoff.reset();
+                        let span = info_span!("Receiving entries to broadcast");   
+                        let json_string = serde_json::to_string(&entry).expect("Serializing failed!");
+                        match sink.send(Message::Text(json_string)).await {
+                            Ok(_) => {
+                                span.in_scope(|| {
+                                    info!("Entry sended!: {}", entry.htmlId);
+                                });
+                            }
+                            Err(err) => {
+                                let error_span = error_span!("Receiving entries to broadcast");
+                                error_span.in_scope(|| {
+                                    error!("Sending failed!: {}", err);
+                                });
+                            }
                         }
-                        Err(err) => {
-                            let error_span = error_span!("Receiving entries to broadcast");
-                            error_span.in_scope(|| {
-                                error!("Sending failed!: {}", err);
-                            });
+                    },
+                    
+                    EntryToSend::HypervisorFinish(text) => {
+                        backoff.reset();
+                        let span = info_span!("Receiving entries to broadcast");   
+                        match sink.send(Message::Text(text.to_string())).await {
+                            Ok(_) => {
+                                span.in_scope(|| {
+                                    info!("`finish` cmd sended!");
+                                });
+                            }
+                            Err(err) => {
+                                let error_span = error_span!("Receiving entries to broadcast");
+                                error_span.in_scope(|| {
+                                    error!("Sending failed!: {}", err);
+                                });
+                            }
                         }
                     }
+                    EntryToSend::Quit => {
+                        backoff.reset();
+                        let span = info_span!("Receiving entries to broadcast");
+                        span.in_scope(|| {
+                            info!("Closing scraper thread!");
+                        });
+                        break;
+                    }
+                    _ => {
+                        backoff.snooze();
+                    }
+                }
+            
+                Err(recv_error) => {
+                    match recv_error {
+                        RecvError::Overflowed(_) => {
+                            warn!("Receiver overflow!");
+                            backoff.snooze();
+                        },
+                        RecvError::Closed => {break;},
+                    }       
                 },
-                EntryToSend::HypervisorFinish(text) => {
-                    let span = info_span!("Receiving entries to broadcast");   
-                    match sink.send(Message::Text(text.to_string())).await {
-                        Ok(_) => {
-                            span.in_scope(|| {
-                                info!("`finish` cmd sended!");
-                            });
-                        }
-                        Err(err) => {
-                            let error_span = error_span!("Receiving entries to broadcast");
-                            error_span.in_scope(|| {
-                                error!("Sending failed!: {}", err);
-                            });
-                        }
-                    }
-                }
-                EntryToSend::Quit => {
-                    let span = info_span!("Receiving entries to broadcast");
-                    span.in_scope(|| {
-                        info!("Closing scraper thread!");
-                    });
-                    break;
-                }
-                _ => {
-                    backoff.snooze();
-                }
             }
             async_std::task::sleep(Duration::from_nanos(250)).await;
         }
@@ -160,9 +180,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Parsing thread
     let parse_handle = async_std::task::spawn(async move {
+        loop {
+            let entry_result = rx.recv().await;
             let backoff = Backoff::new();
-           while let Ok(entry) = rx.recv().await {
-            match entry {
+            match entry_result {
+                Ok(entry) => match entry {
                     EntryToSend::HypervisorCommand(hypervisor_command) => {
                         let date = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil).expect("Bad DateTime format until!");
                         let date_str = date.format("%Y-%m-%d").to_string();
@@ -191,8 +213,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         backoff.snooze();
                     }
                 }
-                async_std::task::sleep(Duration::from_nanos(250)).await;
-            };
+                Err(recv_error) => {
+                    match recv_error {
+                        RecvError::Overflowed(_) => {
+                            warn!("Receiver overflow!");
+                            backoff.snooze();
+                        },
+                        RecvError::Closed => {break;},
+                    }       
+                },
+            }
+            async_std::task::sleep(Duration::from_nanos(250)).await;
+        }
     });
     futures::join!(receive_handle,send_handle,parse_handle);
     Ok(())

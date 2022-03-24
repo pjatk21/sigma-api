@@ -6,9 +6,9 @@ use thirtyfour::{
     By, Keys, WebDriver,
 };
 use timetable::altapi_timetable::UploadEntry;
-use async_broadcast::{Sender};
+use async_broadcast::Sender;
 
-use tracing::{info, warn, trace};
+use tracing::{info, warn, trace, error};
 
 use crate::api::HypervisorCommand;
 
@@ -76,7 +76,10 @@ pub(crate) async fn parse_timetable_day(
             htmlId,
             body: html,
         };
-        tx.broadcast(EntryToSend::Entry(Box::new(entry.clone()))).await.expect("Boadcasting failed!");
+        if let Err(error) =  tx.broadcast(EntryToSend::Entry(Box::new(entry.clone()))).await {
+            error!("Broadcast failed!, trying again!: {}",error);
+            break;
+        }
         info!("{}", index);
         async_std::task::sleep(Duration::from_nanos(250)).await;
     }
