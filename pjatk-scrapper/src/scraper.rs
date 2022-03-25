@@ -67,7 +67,7 @@ pub(crate) async fn parse_timetable_day(
         }
         let tooltip_element = web_driver
             .query(By::Id("RadToolTipManager1RTMPanel"))
-            .wait(Duration::MAX, Duration::from_nanos(125))
+            .wait(Duration::from_secs(5), Duration::from_nanos(125))
             .and_displayed()
             .first()
             .await?;
