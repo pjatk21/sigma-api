@@ -3,7 +3,7 @@ use std::{error::Error, time::Duration};
 
 use thirtyfour::{
     prelude::{ElementQueryable, ElementWaitable},
-    By, Keys, WebDriver,
+    By, Keys, WebDriver, WebElement,
 };
 use timetable::altapi_timetable::UploadEntry;
 use tokio::sync::broadcast::Sender;
@@ -65,12 +65,18 @@ pub(crate) async fn parse_timetable_day(
             eprintln!("Unexpected error: {:#?}", err);
             break;
         }
-        let tooltip_element = web_driver
+        let tooltip_element: WebElement =match web_driver
             .query(By::Id("RadToolTipManager1RTMPanel"))
             .wait(Duration::from_secs(5), Duration::from_nanos(125))
             .and_displayed()
             .first()
-            .await?;
+            .await {
+                Ok(element) => element,
+                Err(_) => {
+                    warn!("Tooltip timeout! {} at {}", &date, &htmlId);
+                    continue;
+                }
+            };
         let html = tooltip_element.inner_html().await?;
         let entry: UploadEntry = UploadEntry {
             htmlId,
