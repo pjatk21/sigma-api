@@ -1,7 +1,7 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::{error::Error, sync::Arc};
 
-use thirtyfour::{DesiredCapabilities, PageLoadStrategy, WebDriver};
+use thirtyfour::{DesiredCapabilities, PageLoadStrategy, WebDriver, OptionRect};
 
 pub(crate) static ENVIROMENT: Env = Env::new();
 
@@ -56,6 +56,8 @@ impl Config {
         client
             .get("https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx")
             .await?;
+        client.set_window_rect(OptionRect::new().with_size(1920,1080)).await?;
+        client.fullscreen_window().await?;
         Ok(client)
     }
 }
