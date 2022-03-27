@@ -2,14 +2,15 @@
 
 
 use api::HypervisorCommand;
-use async_broadcast::RecvError;
-use async_std::net::TcpStream;
+
+
 use chrono::DateTime;
 use config::{Config, ENVIROMENT};
 use crossbeam::utils::Backoff;
 use futures::{StreamExt, SinkExt, TryFutureExt};
-use async_tungstenite::tungstenite::Message;
 use thirtyfour::{Keys, By};
+use tokio::{net::TcpStream, sync::broadcast::error::RecvError};
+use tokio_tungstenite::tungstenite::Message;
 use tracing::{info_span, error_span, error, info, warn};
 use tracing_subscriber::EnvFilter;
 
@@ -23,7 +24,7 @@ mod scraper;
 
 static RETRY: u32 = 5;
 
-#[async_std::main]
+#[tokio::main(flavor="multi_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     std::panic::set_hook(Box::new(move |panic| {
         let error_span = error_span!("Program panics!");
@@ -37,9 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).init();
 
-    let (_tx, mut rx) = async_broadcast::broadcast::<EntryToSend>(32);
-
-    rx.set_overflow(true);
+    let (tx, mut rx) = tokio::sync::broadcast::channel::<EntryToSend>(500);
 
     let client = config.get_webdriver().clone();
     
@@ -48,7 +47,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut count:u32 = 0;
     
     loop {       
-        match async_std::net::TcpStream::connect(&url.replace("ws://","")).await {
+        match TcpStream::connect(&url.replace("ws://","")).await {
             Ok(stream_result) => {
                 stream = stream_result;
                 break;
@@ -58,20 +57,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     panic!("Can't connect after 5 tries!");
                 } else {
                     warn!("Can't connect, repeating after 1 second...");
-                    async_std::task::sleep(Duration::from_secs(1)).await;
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                     count+=1;
                 }
             },
         }
     }
 
-    let (websocket,_) = async_tungstenite::client_async(&url,stream).await.expect("WebSocket upgrade failed!");
+    let (websocket,_) = tokio_tungstenite::client_async(url,stream).await.expect("WebSocket upgrade failed!");
     let (mut sink, mut stream) = websocket.split();
 
     
     // Receiving thread
-    let tx_command = rx.new_sender();
-    let receive_handle = async_std::task::spawn(async move {
+    let tx_command = tx.clone();
+    let receive_handle = tokio::task::spawn(async move {
         let span = info_span!("Receiving WebSocket data");
         let backoff = Backoff::new();
         while let Some(resp) = stream.next().await {
@@ -80,14 +79,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     Message::Text(json_str) => {
                         backoff.reset();
                         let cmd: HypervisorCommand = serde_json::from_str(&json_str).expect("Parsing failed!");
-                        tx_command.try_broadcast(EntryToSend::HypervisorCommand(cmd)).expect("Sending command failed!");
+                        tx_command.send(EntryToSend::HypervisorCommand(cmd)).expect("Sending command failed!");
                     },
                     Message::Close(Some(close_frame)) => {
                         backoff.reset();
                         span.in_scope(|| {
                             info!("Closing: {}", close_frame);
                         });
-                        tx_command.try_broadcast(EntryToSend::Quit).expect("Closing failed!");
+                        tx_command.send(EntryToSend::Quit).expect("Closing failed!");
                         break;
                     }
                     _ => {
@@ -102,14 +101,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     });
                 }
             }
-            async_std::task::sleep(Duration::from_nanos(250)).await;
+            tokio::time::sleep(Duration::from_nanos(250)).await;
         }
     });
 
-    let tx_send = rx.new_sender();
-    let mut rx_send = rx.new_receiver();
+    let tx_send = tx.clone();
+    let mut rx_send = tx.subscribe();
     // Sending thread
-    let send_handle = async_std::task::spawn(async move {
+    let send_handle = tokio::task::spawn(async move {
         let backoff = Backoff::new();
         loop {
             let entry_result = rx_send.recv().await;
@@ -166,20 +165,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
             
                 Err(recv_error) => {
                     match recv_error {
-                        RecvError::Overflowed(_) => {
-                            warn!("Receiver overflow!");
+                        RecvError::Lagged(number) => {
+                            warn!("Receiver overflow! Skipping: {}",number);
                             backoff.snooze();
                         },
                         RecvError::Closed => {break;},
                     }       
                 },
             }
-            async_std::task::sleep(Duration::from_nanos(250)).await;
+            tokio::time::sleep(Duration::from_nanos(250)).await;
         }
     });
 
     // Parsing thread
-    let parse_handle = async_std::task::spawn(async move {
+    let parse_handle = tokio::task::spawn(async move {
         loop {
             let entry_result = rx.recv().await;
             let backoff = Backoff::new();
@@ -188,13 +187,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     EntryToSend::HypervisorCommand(hypervisor_command) => {
                         let date = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil).expect("Bad DateTime format until!");
                         let date_str = date.format("%Y-%m-%d").to_string();
-                        parse_timetable_day(&client,date_str,rx.new_sender()).and_then(|_| async {
+                        parse_timetable_day(&client,date_str,tx.clone()).and_then(|_| async {
                             let span = info_span!("Parsing entries");
                             span.in_scope(|| {
                                 info!("Scrapping ended!: {}",date);
                             });
                             
-                            tx_send.try_broadcast(EntryToSend::HypervisorFinish("finished")).expect("`finish`-ing failed!");
+                            tx_send.send(EntryToSend::HypervisorFinish("finished")).expect("`finish`-ing failed!");
                             client.refresh().await.expect("Refreshing page failed!");
                             Ok(())
                         }).await.expect("Parsing failed!");
@@ -215,17 +214,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
                 Err(recv_error) => {
                     match recv_error {
-                        RecvError::Overflowed(_) => {
-                            warn!("Receiver overflow!");
+                        RecvError::Lagged(number) => {
+                            warn!("Receiver overflow! Skipping: {}",number);
                             backoff.snooze();
                         },
                         RecvError::Closed => {break;},
                     }       
                 },
             }
-            async_std::task::sleep(Duration::from_nanos(250)).await;
+            tokio::time::sleep(Duration::from_nanos(250)).await;
         }
     });
-    futures::join!(receive_handle,send_handle,parse_handle);
+    if let (Err(a),Err(b),Err(c)) = futures::join!(receive_handle,send_handle,parse_handle) {
+        error!("Error joining threads!: {0:?}, {1:?}, {2:?}",a,b,c);
+    };
     Ok(())
 }
