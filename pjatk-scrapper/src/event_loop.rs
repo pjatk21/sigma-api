@@ -13,7 +13,7 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use crate::scraper::EntryToSend;
 
 pub(crate) struct EventLoop<'a> {
-    receiver: ReceiverLoop,
+    receiver: ReceiverLoop<'a>,
     sender: SenderLoop<'a>,
     parser: ParserLoop,
 }
@@ -21,7 +21,7 @@ pub(crate) struct EventLoop<'a> {
 impl<'a> EventLoop<'a> {
     pub(crate) fn new(
         tx: Sender<EntryToSend>,
-        stream: SplitStream<WebSocketStream<TcpStream>>,
+        stream: &'a mut SplitStream<WebSocketStream<TcpStream>>,
         sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
         client: Arc<WebDriver>,
     ) -> Self {

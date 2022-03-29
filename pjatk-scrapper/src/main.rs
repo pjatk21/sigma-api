@@ -66,9 +66,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (websocket, _) = tokio_tungstenite::client_async(url, stream)
         .await
         .expect("WebSocket upgrade failed!");
-    let (mut sink, stream) = websocket.split();
+    let (mut sink, mut stream) = websocket.split();
 
-    let mut looping = EventLoop::new(tx, stream, &mut sink, Arc::clone(client));
+    let mut looping = EventLoop::new(tx, &mut stream, &mut sink, Arc::clone(client));
 
     looping.start().await;
 

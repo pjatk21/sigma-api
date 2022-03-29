@@ -9,15 +9,15 @@ use tracing::{info_span, info, error_span, error};
 use crate::{scraper::EntryToSend, api::HypervisorCommand};
 
 
-pub(crate) struct ReceiverLoop {
+pub(crate) struct ReceiverLoop<'a> {
     tx: Sender<EntryToSend>,
-    stream: SplitStream<WebSocketStream<TcpStream>>,
+    stream: &'a mut SplitStream<WebSocketStream<TcpStream>>,
 }
 
-impl ReceiverLoop {
+impl<'a> ReceiverLoop<'a> {
     pub(crate) fn new(
         tx: Sender<EntryToSend>,
-        stream: SplitStream<WebSocketStream<TcpStream>>,
+        stream: &'a mut SplitStream<WebSocketStream<TcpStream>>,
     ) -> Self {
         Self {
             tx,
