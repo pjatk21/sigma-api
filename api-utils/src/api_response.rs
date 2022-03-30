@@ -59,11 +59,12 @@ impl SigmaApiError {
     #[tracing::instrument]
     pub async fn handle_error(err: Error) -> impl IntoResponse {
         error!("{:?}", err);
-        let status = err.as_response().status();
+        let err_str = err.to_string();
+        let status = err.into_response().status();
         let cause_err = SigmaApiError::error(
             status.as_u16(),
             status.as_str().to_owned(),
-            Some(err.to_string()),
+            Some(err_str),
         )
         .expect("API error from poem::Error failed!");
         Json(cause_err).with_status(status)
