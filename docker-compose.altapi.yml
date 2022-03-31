@@ -22,7 +22,6 @@ services:
       # https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#examples
       - RUST_LOG=info
     depends_on:
-      - geckodriver
       - bridge
   bridge:
     image: ghcr.io/pjatk21/alt-scrap:sigma-bridge

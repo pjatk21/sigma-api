@@ -1,24 +1,23 @@
-use std::{time::Duration, sync::Arc};
+use std::time::Duration;
 
 use chrono::DateTime;
 use crossbeam::utils::Backoff;
 use futures::{TryFutureExt};
-use thirtyfour::{WebDriver, By, Keys};
 use tokio::{sync::broadcast::{Sender, error::RecvError}};
 use tracing::{info_span, info, warn};
 
 use crate::scraper::{EntryToSend, parse_timetable_day};
 
 
-pub(crate) struct ParserLoop {
+pub(crate) struct ParserLoop<'a> {
     tx: Sender<EntryToSend>,
-    client: Arc<WebDriver>,
+    client: &'a reqwest::Client,
 }
 
-impl ParserLoop {
+impl<'a> ParserLoop<'a> {
     pub(crate) fn new(
         tx: Sender<EntryToSend>,
-        client: Arc<WebDriver>,
+        client: &'a reqwest::Client,
     ) -> Self {
         Self {
             tx,
@@ -47,10 +46,6 @@ impl ParserLoop {
                                 self.tx
                                     .send(EntryToSend::HypervisorFinish("finished"))
                                     .expect("`finish`-ing failed!");
-                                self.client
-                                    .refresh()
-                                    .await
-                                    .expect("Refreshing page failed!");
                                 Ok(())
                             })
                             .await
@@ -61,16 +56,6 @@ impl ParserLoop {
                         span.in_scope(|| {
                             info!("Closing scraper thread!");
                         });
-
-                        let window = self
-                            .client
-                            .find_element(By::Css("html"))
-                            .await
-                            .expect("Find element failed!");
-                        window
-                            .send_keys(Keys::Alt + Keys::F4)
-                            .await
-                            .expect("Close window failed! Stop geckodriver container manually!");
                         break;
                     }
                     _ => {
