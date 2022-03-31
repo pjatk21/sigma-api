@@ -46,14 +46,17 @@ impl Config {
     pub(crate) async fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             client_http_client: Config::init_pjatk_client().await?,
-            url: "https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx",
+            url:"https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx",
         })
     }
     pub fn get_http_client(&self) -> &Client {
         &self.client_http_client
     }
+    pub fn get_url(&self) -> &'static str {
+        self.url
+    }
     async fn init_pjatk_client() -> Result<reqwest::Client, reqwest::Error> {
-        let headers = ParserLoop::get_base_headers().expect("Default headers fail!");
+        let headers = ParserLoop::<String>::get_base_headers().expect("Default headers fail!");
         reqwest::Client::builder().default_headers(headers).build()
     }
 }

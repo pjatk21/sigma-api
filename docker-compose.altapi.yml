@@ -9,9 +9,6 @@ services:
       MONGO_URL: 'mongodb://database/altapi'
     depends_on:
       - database
-  geckodriver:
-    image: instrumentisto/geckodriver:92.0-driver0.29.1
-    shm_size: 2g
   scrapper:
     build: 
       dockerfile: pjatk-scrapper/Dockerfile
