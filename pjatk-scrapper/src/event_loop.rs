@@ -5,6 +5,7 @@ use crate::loops::parser_loop::ParserLoop;
 
 
 use futures::stream::{SplitSink, SplitStream};
+use reqwest::IntoUrl;
 use tokio::{
     net::TcpStream,
     sync::broadcast::Sender,
@@ -13,23 +14,24 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
 use crate::scraper::EntryToSend;
 
-pub(crate) struct EventLoop<'a> {
+pub(crate) struct EventLoop<'a, T: AsRef<str>> {
     receiver: ReceiverLoop<'a>,
     sender: SenderLoop<'a>,
-    parser: ParserLoop<'a>,
+    parser: ParserLoop<'a, T>,
 }
 
-impl<'a> EventLoop<'a> {
+impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
     pub(crate) async fn new(
         tx: Sender<EntryToSend>,
         stream: &'a mut SplitStream<WebSocketStream<TcpStream>>,
         sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
         client: &'a reqwest::Client,
-    ) -> Result<EventLoop<'a>, Box<dyn Error>>{
+        url: T
+    ) -> Result<EventLoop<'a, T>, Box<dyn Error>>{
         Ok(Self {
             receiver: ReceiverLoop::new(tx.clone(), stream),
             sender: SenderLoop::new(tx.clone(), sink),
-            parser: ParserLoop::new(tx, client).await?,
+            parser: ParserLoop::new(tx, client, url).await?,
         })
     }
 

@@ -5,29 +5,32 @@ use chrono::DateTime;
 use crossbeam::utils::Backoff;
 use futures::TryFutureExt;
 use kuchiki::traits::TendrilSink;
-use reqwest::{header::*, Client};
+use reqwest::{header::*, Client, IntoUrl};
 use tokio::sync::broadcast::{error::RecvError, Sender};
 use tracing::{info, info_span, warn};
 
-pub(crate) struct ParserLoop<'a> {
+pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
     tx: Sender<EntryToSend>,
     client: &'a reqwest::Client,
     base_validation: HashMap<&'static str, String>,
+    url: T,
 }
 
-impl<'a> ParserLoop<'a> {
+impl<'a, T: AsRef<str> + IntoUrl> ParserLoop<'a, T> {
     pub(crate) async fn new(
         tx: Sender<EntryToSend>,
         client: &'a reqwest::Client,
-    ) -> Result<ParserLoop<'a>, Box<dyn Error>> {
-        let base_validation = ParserLoop::get_base_validation(client).await?;
+        url: T,
+    ) -> Result<ParserLoop<'a, T>, Box<dyn Error>> {
+        let base_validation = ParserLoop::<String>::get_base_validation(url.as_ref().to_string(),client).await?;
         Ok(Self {
             tx,
             client,
             base_validation,
+            url
         })
     }
-    pub(crate) async fn get_date_form<T>(
+    pub(crate) async fn get_date_form(
         base_validation: HashMap<&'static str, String>,
         iso_date: T,
     ) -> HashMap<&'static str, String>
@@ -55,7 +58,7 @@ impl<'a> ParserLoop<'a> {
         date_form
     }
 
-    pub(crate) fn get_parse_form<T>(
+    pub(crate) fn get_parse_form(
         html_id: T,
         base_validation: HashMap<&'static str, String>,
     ) -> HashMap<&'static str, String>
@@ -148,11 +151,12 @@ impl<'a> ParserLoop<'a> {
     }
 
     pub(crate) async fn get_base_validation(
+        url: T,
         client: &Client,
     ) -> Result<HashMap<&'static str, String>, Box<dyn Error>> {
         let response = client
-            .get("https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx")
-            .headers(ParserLoop::get_base_headers()?)
+            .get(url)
+            .headers(ParserLoop::<String>::get_base_headers()?)
             .send()
             .await?;
         let bytes = response.bytes().await?;

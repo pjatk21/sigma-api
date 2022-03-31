@@ -1,5 +1,6 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use regex::bytes::Regex;
+use reqwest::IntoUrl;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display};
@@ -71,7 +72,7 @@ pub(crate) async fn parse_timetable_entry<T>(
     base_validation: &mut HashMap<&'static str, String>,
 ) -> Result<(), Box<dyn Error>>
 where
-    T: AsRef<str> + Debug + Display,
+    T: AsRef<str> + Debug + Display + IntoUrl,
 {
     let timetable_entry_form = ParserLoop::get_parse_form(date, base_validation.clone());
     let response = http_client
