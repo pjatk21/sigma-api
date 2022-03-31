@@ -110,6 +110,7 @@ impl<'a, T: AsRef<str> + IntoUrl> ParserLoop<'a, T> {
                             date_str,
                             self.tx.clone(),
                             &mut self.base_validation,
+                            self.url.as_ref().to_string()
                         )
                         .and_then(|_| async {
                             let span = info_span!("Parsing entries");

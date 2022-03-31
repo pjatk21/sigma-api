@@ -28,10 +28,11 @@ pub(crate) async fn parse_timetable_day(
     date: String,
     tx: Sender<EntryToSend>,
     base_validation: &mut HashMap<&'static str, String>,
+    url: String
 ) -> Result<(), Box<dyn Error>> {
     let date_form = ParserLoop::get_date_form(base_validation.clone(), date.clone()).await;
     let response = http_client
-        .post("https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx")
+        .post(url.clone())
         .form(&date_form)
         .send()
         .await?;
@@ -55,6 +56,7 @@ pub(crate) async fn parse_timetable_day(
             tx.clone(),
             5,
             base_validation,
+            url.clone()
         )
         .await.expect("");
         info!("{}", index);
@@ -70,13 +72,14 @@ pub(crate) async fn parse_timetable_entry<T>(
     tx: Sender<EntryToSend>,
     timeout: u64,
     base_validation: &mut HashMap<&'static str, String>,
+    url: String
 ) -> Result<(), Box<dyn Error>>
 where
     T: AsRef<str> + Debug + Display + IntoUrl,
 {
     let timetable_entry_form = ParserLoop::get_parse_form(date, base_validation.clone());
     let response = http_client
-        .post("https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx")
+        .post(url)
         .form(&timetable_entry_form)
         .send()
         .await?;
