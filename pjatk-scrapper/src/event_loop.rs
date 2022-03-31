@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use crate::loops::{receiver_loop::ReceiverLoop, sender_loop::SenderLoop};
 use crate::loops::parser_loop::ParserLoop;
 
@@ -18,17 +20,17 @@ pub(crate) struct EventLoop<'a> {
 }
 
 impl<'a> EventLoop<'a> {
-    pub(crate) fn new(
+    pub(crate) async fn new(
         tx: Sender<EntryToSend>,
         stream: &'a mut SplitStream<WebSocketStream<TcpStream>>,
         sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
         client: &'a reqwest::Client,
-    ) -> Self {
-        Self {
+    ) -> Result<EventLoop<'a>, Box<dyn Error>>{
+        Ok(Self {
             receiver: ReceiverLoop::new(tx.clone(), stream),
             sender: SenderLoop::new(tx.clone(), sink),
-            parser: ParserLoop::new(tx, client),
-        }
+            parser: ParserLoop::new(tx, client).await?,
+        })
     }
 
     pub(crate) async fn start(&mut self) {
