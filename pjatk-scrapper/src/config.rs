@@ -3,6 +3,8 @@ use std::error::Error;
 
 use reqwest::Client;
 
+use crate::loops::parser_loop::ParserLoop;
+
 pub(crate) static ENVIROMENT: Env = Env::new();
 
 #[allow(non_snake_case)]
@@ -51,6 +53,7 @@ impl Config {
         &self.client_http_client
     }
     async fn init_pjatk_client() -> Result<reqwest::Client, reqwest::Error> {
-        reqwest::Client::builder().user_agent("Test").build()
+        let headers = ParserLoop::get_base_headers().expect("Default headers fail!");
+        reqwest::Client::builder().default_headers(headers).build()
     }
 }
