@@ -1,9 +1,8 @@
 use crate::loops::{receiver_loop::ReceiverLoop, sender_loop::SenderLoop};
 use crate::loops::parser_loop::ParserLoop;
-use std::sync::Arc;
+
 
 use futures::stream::{SplitSink, SplitStream};
-use thirtyfour::WebDriver;
 use tokio::{
     net::TcpStream,
     sync::broadcast::Sender,
@@ -15,7 +14,7 @@ use crate::scraper::EntryToSend;
 pub(crate) struct EventLoop<'a> {
     receiver: ReceiverLoop<'a>,
     sender: SenderLoop<'a>,
-    parser: ParserLoop,
+    parser: ParserLoop<'a>,
 }
 
 impl<'a> EventLoop<'a> {
@@ -23,7 +22,7 @@ impl<'a> EventLoop<'a> {
         tx: Sender<EntryToSend>,
         stream: &'a mut SplitStream<WebSocketStream<TcpStream>>,
         sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
-        client: Arc<WebDriver>,
+        client: &'a reqwest::Client,
     ) -> Self {
         Self {
             receiver: ReceiverLoop::new(tx.clone(), stream),

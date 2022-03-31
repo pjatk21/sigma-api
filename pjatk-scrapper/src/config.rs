@@ -1,7 +1,7 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
-use std::{error::Error, sync::Arc};
+use std::error::Error;
 
-use thirtyfour::{DesiredCapabilities, PageLoadStrategy, WebDriver, OptionRect};
+use reqwest::Client;
 
 pub(crate) static ENVIROMENT: Env = Env::new();
 
@@ -36,28 +36,21 @@ impl Env {
 }
 
 pub(crate) struct Config {
-    client_webdriver: Arc<WebDriver>,
+    client_http_client: reqwest::Client,
+    url: &'static str,
 }
 
 impl Config {
     pub(crate) async fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            client_webdriver: Arc::new(Config::init_pjatk_client().await?),
+            client_http_client: Config::init_pjatk_client().await?,
+            url: "https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx",
         })
     }
-    pub fn get_webdriver(&self) -> &Arc<WebDriver> {
-        &self.client_webdriver
+    pub fn get_http_client(&self) -> &Client {
+        &self.client_http_client
     }
-    async fn init_pjatk_client() -> Result<WebDriver, Box<dyn Error>> {
-        let mut caps = DesiredCapabilities::firefox();
-        caps.set_headless()?;
-        caps.set_page_load_strategy(PageLoadStrategy::None)?;
-        let client = WebDriver::new("http://geckodriver:4444", &caps).await?;
-        client
-            .get("https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx")
-            .await?;
-        client.set_window_rect(OptionRect::new().with_size(1920,1080)).await?;
-        client.fullscreen_window().await?;
-        Ok(client)
+    async fn init_pjatk_client() -> Result<reqwest::Client, reqwest::Error> {
+        reqwest::Client::builder().user_agent("Test").build()
     }
 }

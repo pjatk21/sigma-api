@@ -10,7 +10,7 @@ use tokio::net::TcpStream;
 use tracing::{error, error_span, warn};
 use tracing_subscriber::EnvFilter;
 
-use std::{error::Error, sync::Arc, time::Duration};
+use std::{error::Error, time::Duration};
 
 use crate::scraper::EntryToSend;
 
@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let (tx, _) = tokio::sync::broadcast::channel::<EntryToSend>(500);
 
-    let client = config.get_webdriver();
+    
 
     let url = std::env::var(ENVIROMENT.MANAGER_URL).expect("No Altapi URL found!");
     let stream: TcpStream;
@@ -67,8 +67,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .expect("WebSocket upgrade failed!");
     let (mut sink, mut stream) = websocket.split();
-
-    let mut looping = EventLoop::new(tx, &mut stream, &mut sink, Arc::clone(client));
+    let client = config.get_http_client();
+    let mut looping = EventLoop::new(tx, &mut stream, &mut sink, client);
 
     looping.start().await;
 
