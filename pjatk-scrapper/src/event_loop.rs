@@ -1,15 +1,11 @@
 use std::error::Error;
 
-use crate::loops::{receiver_loop::ReceiverLoop, sender_loop::SenderLoop};
 use crate::loops::parser_loop::ParserLoop;
-
+use crate::loops::{receiver_loop::ReceiverLoop, sender_loop::SenderLoop};
 
 use futures::stream::{SplitSink, SplitStream};
 use reqwest::IntoUrl;
-use tokio::{
-    net::TcpStream,
-    sync::broadcast::Sender,
-};
+use tokio::{net::TcpStream, sync::broadcast::Sender};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
 use crate::scraper::EntryToSend;
@@ -26,11 +22,11 @@ impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
         stream: &'a mut SplitStream<WebSocketStream<TcpStream>>,
         sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
         client: &'a reqwest::Client,
-        url: T
-    ) -> Result<EventLoop<'a, T>, Box<dyn Error>>{
+        url: T,
+    ) -> Result<EventLoop<'a, T>, Box<dyn Error>> {
         Ok(Self {
             receiver: ReceiverLoop::new(tx.clone(), stream),
-            sender: SenderLoop::new(tx.clone(), sink),
+            sender: SenderLoop::new(tx.subscribe(), sink),
             parser: ParserLoop::new(tx, client, url).await?,
         })
     }

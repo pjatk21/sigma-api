@@ -2,33 +2,32 @@ use std::time::Duration;
 
 use crossbeam::utils::Backoff;
 use futures::{stream::SplitSink, SinkExt};
-use tokio::{net::TcpStream, sync::broadcast::{Sender, error::RecvError}};
-use tokio_tungstenite::{WebSocketStream, tungstenite::Message};
-use tracing::{info_span, info, error_span, error, warn};
+use tokio::{
+    net::TcpStream,
+    sync::broadcast::{error::RecvError, Receiver},
+};
+use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
+use tracing::{error, error_span, info, info_span, warn};
 
 use crate::scraper::EntryToSend;
 
 pub(crate) struct SenderLoop<'a> {
-    tx: Sender<EntryToSend>,
+    rx: Receiver<EntryToSend>,
     sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
 }
 
 impl<'a> SenderLoop<'a> {
     pub(crate) fn new(
-        tx: Sender<EntryToSend>,
+        rx: Receiver<EntryToSend>,
         sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
     ) -> Self {
-        Self {
-            tx,
-            sink,
-        }
+        Self { rx, sink }
     }
 
     pub(crate) async fn start(&mut self) {
         let backoff = Backoff::new();
-        let mut rx_send = self.tx.subscribe();
         loop {
-            let entry_result = rx_send.recv().await;
+            let entry_result = self.rx.recv().await;
             match entry_result {
                 Ok(entry) => match entry {
                     EntryToSend::Entry(entry) => {
@@ -36,41 +35,39 @@ impl<'a> SenderLoop<'a> {
                         let span = info_span!("Receiving entries to broadcast");
                         let json_string =
                             serde_json::to_string(&entry).expect("Serializing failed!");
-                        
-                            match self.sink.send(Message::Text(json_string)).await {
-                                Ok(_) => {
-                                    span.in_scope(|| {
-                                        info!("Entry sended!: {}", entry.htmlId);
-                                    });
-                                }
-                                Err(err) => {
-                                    let error_span = error_span!("Receiving entries to broadcast");
-                                    error_span.in_scope(|| {
-                                        error!("Sending failed!: {}", err);
-                                    });
-                                }
+
+                        match self.sink.send(Message::Text(json_string)).await {
+                            Ok(_) => {
+                                span.in_scope(|| {
+                                    info!("Entry sended!: {}", entry.htmlId);
+                                });
                             }
-                        
+                            Err(err) => {
+                                let error_span = error_span!("Receiving entries to broadcast");
+                                error_span.in_scope(|| {
+                                    error!("Sending failed!: {}", err);
+                                });
+                            }
+                        }
                     }
 
                     EntryToSend::HypervisorFinish(text) => {
                         backoff.reset();
                         let span = info_span!("Receiving entries to broadcast");
-                        
-                            match self.sink.send(Message::Text(text.to_string())).await {
-                                Ok(_) => {
-                                    span.in_scope(|| {
-                                        info!("`finish` cmd sended!");
-                                    });
-                                }
-                                Err(err) => {
-                                    let error_span = error_span!("Receiving entries to broadcast");
-                                    error_span.in_scope(|| {
-                                        error!("Sending failed!: {}", err);
-                                    });
-                                }
+
+                        match self.sink.send(Message::Text(text.to_string())).await {
+                            Ok(_) => {
+                                span.in_scope(|| {
+                                    info!("`finish` cmd sended!");
+                                });
                             }
-                        
+                            Err(err) => {
+                                let error_span = error_span!("Receiving entries to broadcast");
+                                error_span.in_scope(|| {
+                                    error!("Sending failed!: {}", err);
+                                });
+                            }
+                        }
                     }
                     EntryToSend::Quit => {
                         backoff.reset();
@@ -99,4 +96,3 @@ impl<'a> SenderLoop<'a> {
         }
     }
 }
-

@@ -8,7 +8,7 @@ use futures::StreamExt;
 use tokio::net::TcpStream;
 
 use tracing::{error, error_span, warn};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{fmt::format, EnvFilter};
 
 use std::{error::Error, time::Duration};
 
@@ -20,7 +20,7 @@ mod event_loop;
 mod loops;
 mod scraper;
 
-static RETRY: u32 = 5;
+static RETRY: u32 = 10;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -35,11 +35,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
+        .event_format(format().pretty())
         .init();
 
     let (tx, _) = tokio::sync::broadcast::channel::<EntryToSend>(500);
-
-    
 
     let url = std::env::var(ENVIROMENT.MANAGER_URL).expect("No Altapi URL found!");
     let stream: TcpStream;

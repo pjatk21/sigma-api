@@ -3,11 +3,10 @@ use std::time::Duration;
 use crossbeam::utils::Backoff;
 use futures::{stream::SplitStream, StreamExt};
 use tokio::{net::TcpStream, sync::broadcast::Sender};
-use tokio_tungstenite::{WebSocketStream, tungstenite::Message};
-use tracing::{info_span, info, error_span, error};
+use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
+use tracing::{error, error_span, info, info_span};
 
-use crate::{scraper::EntryToSend, api::HypervisorCommand};
-
+use crate::{api::HypervisorCommand, scraper::EntryToSend};
 
 pub(crate) struct ReceiverLoop<'a> {
     tx: Sender<EntryToSend>,
@@ -19,10 +18,7 @@ impl<'a> ReceiverLoop<'a> {
         tx: Sender<EntryToSend>,
         stream: &'a mut SplitStream<WebSocketStream<TcpStream>>,
     ) -> Self {
-        Self {
-            tx,
-            stream,
-        }
+        Self { tx, stream }
     }
     pub(crate) async fn start(&mut self) {
         let span = info_span!("Receiving WebSocket data");
