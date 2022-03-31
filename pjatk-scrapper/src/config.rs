@@ -17,7 +17,7 @@ pub(crate) struct Env {
     pub MONGO_PORT: &'static str,
     pub MONGO_INITDB_DATABASE: &'static str,
     pub MONGO_INITDB_COLLECTION: &'static str,
-    pub MANAGER_URL:&'static str,
+    pub MANAGER_URL: &'static str,
 }
 
 impl Env {
@@ -32,7 +32,6 @@ impl Env {
             MONGO_INITDB_DATABASE: "MONGO_INITDB_DATABASE",
             MONGO_INITDB_COLLECTION: "MONGO_INITDB_COLLECTION",
             MANAGER_URL: "MANAGER_URL",
-            
         }
     }
 }
@@ -46,7 +45,7 @@ impl Config {
     pub(crate) async fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             client_http_client: Config::init_pjatk_client().await?,
-            url:"https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx",
+            url: "https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx",
         })
     }
     pub fn get_http_client(&self) -> &Client {
