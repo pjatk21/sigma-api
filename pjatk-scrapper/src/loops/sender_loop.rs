@@ -7,7 +7,7 @@ use tokio::{
     sync::broadcast::{error::RecvError, Receiver},
 };
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
-use tracing::{error, error_span, info, info_span, warn};
+use tracing::{error, error_span, info, info_span, warn, trace};
 
 use crate::scraper::EntryToSend;
 
@@ -39,7 +39,7 @@ impl<'a> SenderLoop<'a> {
                         match self.sink.send(Message::Text(json_string)).await {
                             Ok(_) => {
                                 span.in_scope(|| {
-                                    info!("Entry sended!: {}", entry.htmlId);
+                                    trace!("Entry sended!: {}", entry.htmlId);
                                 });
                             }
                             Err(err) => {

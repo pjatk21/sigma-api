@@ -8,7 +8,7 @@ use std::fmt::{Debug, Display};
 use timetable::altapi_timetable::UploadEntry;
 use tokio::sync::broadcast::Sender;
 
-use tracing::{error, info};
+use tracing::{error, info, trace};
 
 use crate::api::HypervisorCommand;
 use crate::loops::parser_loop::ParserLoop;
@@ -41,7 +41,7 @@ pub(crate) async fn parse_timetable_day(
     let bytes = response.bytes().await?;
     let html_body = String::from_utf8(bytes.as_ref().to_vec())?;
     let html_string: String = if date_form.is_some() {
-        ParserLoop::<&str>::update_base_validation_and_give_html_delta(&html_body, base_validation,"RadAjaxPanel1Panel")
+        ParserLoop::<&str>::give_html_delta(&html_body, "RadAjaxPanel1Panel")
             .await
     } else {
         ParserLoop::<&str>::update_base_validation_and_give_html_full(
@@ -76,8 +76,8 @@ pub(crate) async fn parse_timetable_day(
             url.clone(),
         )
         .await
-        .expect("");
-        info!("{}", index);
+        .unwrap_or_else(|err| panic!("Failed at: {} - {}\n{:#?}", index, html_id, err));
+        trace!("{}", index);
     }
     Ok(())
 }
@@ -105,9 +105,8 @@ where
     let response_bytes = response.bytes().await?;
     let response_string = std::str::from_utf8(response_bytes.as_ref())?;
 
-    let html = ParserLoop::<&str>::update_base_validation_and_give_html_delta(
+    let html = ParserLoop::<&str>::give_html_delta(
         response_string,
-        base_validation,
         "RadToolTipManager1RTMPanel"
     )
     .await;

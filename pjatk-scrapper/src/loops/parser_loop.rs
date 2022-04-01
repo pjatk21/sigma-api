@@ -215,31 +215,16 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
         Ok(html_string)
     }
 
-    pub(crate) async fn update_base_validation_and_give_html_delta(
+    pub(crate) async fn give_html_delta(
         html: T,
-        base_validation: &mut HashMap<&'static str, String>,
         type_of: T,
     ) -> String {
-        let escape = html.as_ref().escape_default().to_string();
-        let splitted = escape.split('|');
+        let splitted = html.as_ref().split('|');
 
         let position_html = splitted.clone().position(|x| x == type_of.as_ref());
 
-        let position_view_state = splitted.clone().position(|x| x == "__VIEWSTATE");
-        let position_view_state_generator = splitted.clone().position(|x| x == "__VIEWSTATEGENERATOR");
-        let position_event_validation = splitted.clone().position(|x| x == "__EVENTVALIDATION");
-
         let splitted_vec: Vec<&str> = splitted.collect();
 
-        let view_state = splitted_vec[position_view_state.unwrap()+1];
-        let view_state_generator = splitted_vec[position_view_state_generator.unwrap()+1];
-        let event_validation = splitted_vec[position_event_validation.unwrap()+1];
-
-        *base_validation.get_mut("__VIEWSTATE").unwrap() = view_state.to_string();
-        *base_validation.get_mut("__VIEWSTATEGENERATOR").unwrap() =
-            view_state_generator.to_string();
-        *base_validation.get_mut("__EVENTVALIDATION").unwrap() = event_validation.to_string();
-        info!("Validation: {0} - {1} - {2}",view_state,view_state_generator,event_validation);
         splitted_vec[position_html.unwrap() + 1].to_string()
         
     }
