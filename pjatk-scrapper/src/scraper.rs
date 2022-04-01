@@ -39,17 +39,17 @@ pub(crate) async fn parse_timetable_day(
         .await?;
 
     let bytes = response.bytes().await?;
-    let html_body = String::from_utf8(bytes.as_ref().to_vec())?;
+    let html_body = std::str::from_utf8(bytes.as_ref())?;
     let html_string: String = if date_form.is_some() {
-        ParserLoop::<&str>::give_html_delta(&html_body, "RadAjaxPanel1Panel")
+        ParserLoop::<&str>::give_html_delta(html_body, "RadAjaxPanel1Panel")
             .await
     } else {
         ParserLoop::<&str>::update_base_validation_and_give_html_full(
-            &html_body,
+            html_body,
             base_validation,
         )
         .await;
-        html_body.clone()
+        html_body.to_string()
     };
     lazy_static! {
         static ref HTML_ID_REGEX: Regex = Regex::new(r"\d+;[zr]").unwrap();
