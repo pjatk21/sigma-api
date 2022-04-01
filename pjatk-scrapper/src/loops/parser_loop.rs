@@ -1,3 +1,4 @@
+use reqwest::IntoUrl;
 use std::{collections::HashMap, error::Error, time::Duration};
 
 use crate::scraper::{parse_timetable_day, EntryToSend};
@@ -5,7 +6,7 @@ use chrono::{DateTime, Utc};
 use crossbeam::utils::Backoff;
 use futures::TryFutureExt;
 use kuchiki::traits::TendrilSink;
-use reqwest::{header::*, Client, IntoUrl};
+use reqwest::{header::*, Client};
 use tokio::sync::broadcast::{error::RecvError, Sender};
 use tracing::{info, info_span, warn};
 
@@ -16,14 +17,14 @@ pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
     url: T,
 }
 
-impl<'a, T: AsRef<str> + IntoUrl> ParserLoop<'a, T> {
+impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
     pub(crate) async fn new(
         tx: Sender<EntryToSend>,
         client: &'a reqwest::Client,
         url: T,
     ) -> Result<ParserLoop<'a, T>, Box<dyn Error>> {
         let (base_validation, _) =
-            ParserLoop::<String>::get_base_validation_and_html(url.as_ref().to_string(), client)
+            ParserLoop::<&str>::get_base_validation_and_html(url.as_ref().to_string(), client)
                 .await?;
         Ok(Self {
             tx,
@@ -35,7 +36,7 @@ impl<'a, T: AsRef<str> + IntoUrl> ParserLoop<'a, T> {
     pub(crate) async fn get_date_form(
         base_validation: HashMap<&'static str, String>,
         iso_date: T,
-    ) -> (HashMap<&'static str, String>, bool)
+    ) -> Option<HashMap<&'static str, String>>
     where
         T: AsRef<str>,
     {
@@ -61,9 +62,9 @@ impl<'a, T: AsRef<str> + IntoUrl> ParserLoop<'a, T> {
 
             date_form.extend(base_validation);
 
-            (date_form, false)
+            Some(date_form)
         } else {
-            (HashMap::new(), true)
+            None
         }
     }
 
@@ -163,36 +164,36 @@ impl<'a, T: AsRef<str> + IntoUrl> ParserLoop<'a, T> {
         }
     }
 
-    pub(crate) async fn get_base_validation_and_html(
-        url: T,
+    pub(crate) async fn get_base_validation_and_html<R>(
+        url: R,
         client: &Client,
-    ) -> Result<(HashMap<&'static str, String>, String), Box<dyn Error>> {
+    ) -> Result<(HashMap<&'static str, String>, String), Box<dyn Error>> where R: AsRef<str> + IntoUrl {
         let response = client
             .get(url)
             .headers(ParserLoop::<String>::get_base_headers()?)
             .send()
             .await?;
         let bytes = response.bytes().await?;
-        let html_string = String::from_utf8(bytes.as_ref().to_vec())?;
+        let html_string = std::str::from_utf8(bytes.as_ref())?;
         let mut temp = HashMap::from([
             ("__VIEWSTATE", "".to_string()),
             ("__VIEWSTATEGENERATOR", "".to_string()),
             ("__EVENTVALIDATION", "".to_string()),
         ]);
-        ParserLoop::<String>::update_base_validation_and_give_html_full(
-            html_string.clone(),
+        ParserLoop::<&str>::update_base_validation_and_give_html_full(
+            html_string,
             &mut temp,
         )
         .await
         .expect("Updating failed!");
-        Ok((temp, html_string))
+        Ok((temp, html_string.to_string()))
     }
 
     pub(crate) async fn update_base_validation_and_give_html_full(
-        html_string: String,
+        html_string: T,
         base_validation: &mut HashMap<&'static str, String>,
-    ) -> Result<String, ()> {
-        let node_ref = kuchiki::parse_html().one(html_string.clone());
+    ) -> Result<T, ()> {
+        let node_ref = kuchiki::parse_html().one(html_string.as_ref());
 
         let view_state_dom = node_ref.select_first("#__VIEWSTATE").unwrap();
         let view_state_attributes = view_state_dom.attributes.borrow();
@@ -215,17 +216,18 @@ impl<'a, T: AsRef<str> + IntoUrl> ParserLoop<'a, T> {
     }
 
     pub(crate) async fn update_base_validation_and_give_html_delta(
-        html: String,
+        html: T,
         base_validation: &mut HashMap<&'static str, String>,
-        type_of: String,
+        type_of: T,
     ) -> String {
-        let mut splitted = html.split('|');
+        let escape = html.as_ref().escape_default().to_string();
+        let splitted = escape.split('|');
 
-        let position_html = splitted.position(|x| x == type_of);
+        let position_html = splitted.clone().position(|x| x == type_of.as_ref());
 
-        let position_view_state = splitted.position(|x| x == "__VIEWSTATE");
-        let position_view_state_generator = splitted.position(|x| x == "__VIEWSTATEGENERATOR");
-        let position_event_validation = splitted.position(|x| x == "__EVENTVALIDATION");
+        let position_view_state = splitted.clone().position(|x| x == "__VIEWSTATE");
+        let position_view_state_generator = splitted.clone().position(|x| x == "__VIEWSTATEGENERATOR");
+        let position_event_validation = splitted.clone().position(|x| x == "__EVENTVALIDATION");
 
         let splitted_vec: Vec<&str> = splitted.collect();
 

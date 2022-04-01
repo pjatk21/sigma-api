@@ -55,7 +55,7 @@ impl Config {
         self.url
     }
     async fn init_pjatk_client() -> Result<reqwest::Client, reqwest::Error> {
-        let headers = ParserLoop::<String>::get_base_headers().expect("Default headers fail!");
+        let headers = ParserLoop::<&str>::get_base_headers().expect("Default headers fail!");
         reqwest::Client::builder().default_headers(headers).build()
     }
 }
