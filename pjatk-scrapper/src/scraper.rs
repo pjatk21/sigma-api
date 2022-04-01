@@ -30,7 +30,7 @@ pub(crate) async fn parse_timetable_day(
     base_validation: &mut HashMap<&'static str, String>,
     url: String,
 ) -> Result<(), Box<dyn Error>> {
-    let (date_form, bug_check) =
+    let date_form =
         ParserLoop::get_date_form(base_validation.clone(), date.clone()).await;
     let response = http_client
         .post(url.clone())
@@ -40,18 +40,17 @@ pub(crate) async fn parse_timetable_day(
 
     let bytes = response.bytes().await?;
     let html_body = String::from_utf8(bytes.as_ref().to_vec())?;
-    let html_string: String = if !bug_check {
-        ParserLoop::<String>::update_base_validation_and_give_html_delta(html_body.clone(), base_validation,"RadAjaxPanel1Panel".to_string())
+    let html_string: String = if date_form.is_some() {
+        ParserLoop::<&str>::update_base_validation_and_give_html_delta(&html_body, base_validation,"RadAjaxPanel1Panel")
             .await
     } else {
-        ParserLoop::<String>::update_base_validation_and_give_html_full(
-            html_body.clone(),
+        ParserLoop::<&str>::update_base_validation_and_give_html_full(
+            &html_body,
             base_validation,
         )
         .await;
         html_body.clone()
     };
-    info!("HTML body: {}", html_string);
     lazy_static! {
         static ref HTML_ID_REGEX: Regex = Regex::new(r"\d+;[zr]").unwrap();
     }
@@ -68,7 +67,7 @@ pub(crate) async fn parse_timetable_day(
     // Normal scrapping (5-sec. timeout)
     for (index, html_id) in good_elements.iter().enumerate() {
         parse_timetable_entry(
-            html_id.to_string(),
+            *html_id,
             http_client,
             date.clone(),
             tx.clone(),
@@ -84,35 +83,37 @@ pub(crate) async fn parse_timetable_day(
 }
 
 #[tracing::instrument]
-pub(crate) async fn parse_timetable_entry<T>(
-    html_id: String,
+pub(crate) async fn parse_timetable_entry<T,R>(
+    html_id: R,
     http_client: &reqwest::Client,
     date: T,
     tx: Sender<EntryToSend>,
     timeout: u64,
     base_validation: &mut HashMap<&'static str, String>,
-    url: String,
+    url: T,
 ) -> Result<(), Box<dyn Error>>
 where
     T: AsRef<str> + Debug + Display + IntoUrl,
+    R: AsRef<str> + IntoUrl + Debug + Copy
 {
-    let timetable_entry_form = ParserLoop::get_parse_form(html_id.clone(), base_validation.clone());
+    let timetable_entry_form = ParserLoop::get_parse_form(html_id, base_validation.clone());
     let response = http_client
         .post(url)
         .form(&timetable_entry_form)
         .send()
         .await?;
-    let response_string = String::from_utf8(response.bytes().await?.to_vec())?;
+    let response_bytes = response.bytes().await?;
+    let response_string = std::str::from_utf8(response_bytes.as_ref())?;
 
-    let html = ParserLoop::<String>::update_base_validation_and_give_html_delta(
+    let html = ParserLoop::<&str>::update_base_validation_and_give_html_delta(
         response_string,
         base_validation,
-        "RadToolTipManager1RTMPanel".to_string()
+        "RadToolTipManager1RTMPanel"
     )
     .await;
 
     let entry: UploadEntry = UploadEntry {
-        htmlId: html_id.clone(),
+        htmlId: html_id.as_ref().to_string(),
         body: html,
     };
     if let Err(error) = tx.send(EntryToSend::Entry(entry)) {
