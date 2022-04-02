@@ -18,6 +18,7 @@ mod api;
 mod config;
 mod event_loop;
 mod loops;
+mod request;
 mod scraper;
 
 static RETRY: u32 = 10;

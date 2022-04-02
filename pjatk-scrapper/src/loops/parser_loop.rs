@@ -1,8 +1,8 @@
 use reqwest::IntoUrl;
-use std::{collections::HashMap, error::Error, time::Duration};
+use std::{error::Error, time::Duration};
 
-use crate::scraper::{parse_timetable_day, EntryToSend};
-use chrono::{DateTime, Utc};
+use crate::{scraper::{parse_timetable_day, EntryToSend}, request::base_validation::BaseValidation};
+use chrono::DateTime;
 use crossbeam::utils::Backoff;
 use futures::TryFutureExt;
 use kuchiki::traits::TendrilSink;
@@ -13,7 +13,7 @@ use tracing::{info, info_span, warn};
 pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
     tx: Sender<EntryToSend>,
     client: &'a reqwest::Client,
-    base_validation: HashMap<&'static str, String>,
+    base_validation: BaseValidation<String>,
     url: T,
 }
 
@@ -33,65 +33,6 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
             url
         })
     }
-    pub(crate) async fn get_date_form(
-        base_validation: HashMap<&'static str, String>,
-        iso_date: T,
-    ) -> Option<HashMap<&'static str, String>>
-    where
-        T: AsRef<str>,
-    {
-        if Utc::now()
-            .naive_local()
-            .date()
-            .format("%Y-%m-%d")
-            .to_string()
-            != iso_date.as_ref()
-        {
-            let date_picker_client_state = format!("{{\"enabled\":true,\"emptyMessage\":\"\",\"validationText\":\"{0}-00-00-00\",\"valueAsString\":\"{0}-00-00-00\",\"minDateStr\":\"1980-01-01-00-00-00\",\"maxDateStr\":\"2099-12-31-00-00-00\",\"lastSetTextBoxValue\":\"{0}\"}}",iso_date.as_ref());
-            let mut date_form: HashMap<&'static str, String> = HashMap::from([
-                ("RadScriptManager1", "RadAjaxPanel1Panel|DataPicker".into()),
-                ("__EVENTTARGET", "DataPicker".into()),
-                ("__EVENTARGUMENT", "".into()),
-                ("DataPicker", iso_date.as_ref().into()),
-                ("DataPicker$dateInput", iso_date.as_ref().into()),
-                ("DataPicker_ClientState", "".into()),
-                ("DataPicker_dateInput_ClientState", date_picker_client_state),
-                ("__ASYNCPOST", "true".into()),
-                ("RadAJAXControlID", "RadAjaxPanel1".into()),
-            ]);
-
-            date_form.extend(base_validation);
-
-            Some(date_form)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn get_parse_form(
-        html_id: T,
-        base_validation: HashMap<&'static str, String>,
-    ) -> HashMap<&'static str, String>
-    where
-        T: AsRef<str>,
-    {
-        let html_id_client_state = format!(
-            "{{\"AjaxTargetControl\":\"{0}\",\"Value\":\"{0}\"}}",
-            html_id.as_ref()
-        );
-        let mut date_form: HashMap<&'static str, String> = HashMap::from([
-            (
-                "RadScriptManager1",
-                "RadToolTipManager1RTMPanel|RadToolTipManager1RTMPanel".into(),
-            ),
-            ("__EVENTTARGET", "RadToolTipManager1RTMPanel".into()),
-            ("__EVENTARGUMENT", "undefined".into()),
-            ("RadToolTipManager1_ClientState", html_id_client_state),
-        ]);
-        date_form.extend(base_validation);
-        date_form
-    }
-
     pub(crate) fn get_base_headers() -> Result<HeaderMap, Box<dyn Error>> {
         let mut base_headers = HeaderMap::new();
         base_headers.append(
@@ -167,7 +108,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
     pub(crate) async fn get_base_validation_and_html<R>(
         url: R,
         client: &Client,
-    ) -> Result<(HashMap<&'static str, String>, String), Box<dyn Error>> where R: AsRef<str> + IntoUrl {
+    ) -> Result<(BaseValidation<String>, String), Box<dyn Error>> where R: AsRef<str> + IntoUrl {
         let response = client
             .get(url)
             .headers(ParserLoop::<String>::get_base_headers()?)
@@ -175,11 +116,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
             .await?;
         let bytes = response.bytes().await?;
         let html_string = std::str::from_utf8(bytes.as_ref())?;
-        let mut temp = HashMap::from([
-            ("__VIEWSTATE", "".to_string()),
-            ("__VIEWSTATEGENERATOR", "".to_string()),
-            ("__EVENTVALIDATION", "".to_string()),
-        ]);
+        let mut temp = BaseValidation::new("".to_string(),"".to_string(),"".to_string());
         ParserLoop::<&str>::update_base_validation_and_give_html_full(
             html_string,
             &mut temp,
@@ -191,7 +128,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
 
     pub(crate) async fn update_base_validation_and_give_html_full(
         html_string: T,
-        base_validation: &mut HashMap<&'static str, String>,
+        base_validation: &mut BaseValidation<String>,
     ) -> Result<T, ()> {
         let node_ref = kuchiki::parse_html().one(html_string.as_ref());
 
@@ -207,11 +144,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
         let event_validation_attributes = event_validation_dom.attributes.borrow();
         let event_validation = event_validation_attributes.get("value").unwrap();
 
-        *base_validation.get_mut("__VIEWSTATE").unwrap() = view_state.to_string();
-        *base_validation.get_mut("__VIEWSTATEGENERATOR").unwrap() =
-            view_state_generator.to_string();
-        *base_validation.get_mut("__EVENTVALIDATION").unwrap() = event_validation.to_string();
-
+        base_validation.update(view_state.to_string(),view_state_generator.to_string(),event_validation.to_string());
         Ok(html_string)
     }
 
