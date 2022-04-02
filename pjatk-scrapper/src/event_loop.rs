@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::time::Duration;
 
 use crate::loops::parser_loop::ParserLoop;
 use crate::loops::{receiver_loop::ReceiverLoop, sender_loop::SenderLoop};
@@ -23,11 +24,12 @@ impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
         sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
         client: &'a reqwest::Client,
         url: T,
+        timeout: Duration
     ) -> Result<EventLoop<'a, T>, Box<dyn Error>> {
         Ok(Self {
             receiver: ReceiverLoop::new(tx.clone(), stream),
             sender: SenderLoop::new(tx.subscribe(), sink),
-            parser: ParserLoop::new(tx, client, url).await?,
+            parser: ParserLoop::new(tx, client, url,timeout).await?,
         })
     }
 

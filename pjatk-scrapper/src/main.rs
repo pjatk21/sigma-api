@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .expect("WebSocket upgrade failed!");
     let (mut sink, mut stream) = websocket.split();
     let client = config.get_http_client();
-    let mut looping = EventLoop::new(tx, &mut stream, &mut sink, client, config.get_url()).await?;
+    let mut looping = EventLoop::new(tx, &mut stream, &mut sink, client, config.get_url(),config.get_timeout()).await?;
 
     looping.start().await;
 
