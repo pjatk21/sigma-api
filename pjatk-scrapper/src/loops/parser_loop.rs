@@ -15,6 +15,7 @@ pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
     client: &'a reqwest::Client,
     base_validation: BaseValidation<String>,
     url: T,
+    timeout: Duration,
 }
 
 impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
@@ -22,6 +23,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
         tx: Sender<EntryToSend>,
         client: &'a reqwest::Client,
         url: T,
+        timeout: Duration,
     ) -> Result<ParserLoop<'a, T>, Box<dyn Error>> {
         let (base_validation, _) =
             ParserLoop::<&str>::get_base_validation_and_html(url.as_ref().to_string(), client)
@@ -30,7 +32,8 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
             tx,
             client,
             base_validation,
-            url
+            url,
+            timeout
         })
     }
     pub(crate) fn get_base_headers() -> Result<HeaderMap, Box<dyn Error>> {
@@ -74,7 +77,9 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
 
                             self.tx
                                 .send(EntryToSend::HypervisorFinish("finished"))
-                                .expect("`finish`-ing failed!");
+                                .expect("`finish`-ing failed!");                                
+                            info!("Sleeping for {} miliseconds...", self.timeout.as_millis());
+                            tokio::time::sleep(self.timeout).await;
                             Ok(())
                         })
                         .await

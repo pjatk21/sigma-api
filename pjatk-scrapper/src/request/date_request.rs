@@ -4,42 +4,42 @@ use super::base_validation::BaseValidation;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct DateRequest {
-    RadScriptManager1: String,
-    __EVENStringStringARGEString: String,
-    __EVENStringARGUMENString: String,
-    DataPicker: String,
+pub(crate) struct DateRequest<T: AsRef<str> + Clone> {
+    RadScriptManager1: &'static str,
+    __EVENTTARGET: &'static str,
+    __EVENTARGUMENT: &'static str,
+    DataPicker: T,
     #[serde(rename="DataPicker$dateInput")]
-    DataPicker_dateInput: String,
-    DataPicker_ClientState: String,
+    DataPicker_dateInput: T,
+    DataPicker_ClientState: &'static str,
     DataPicker_dateInput_ClientState: String,
-    __ASYNCPOST: String,
-    RadAJAXControlID: String,
+    __ASYNCPOST: &'static str,
+    RadAJAXControlID: &'static str,
     #[serde(flatten)]
-    base_validation: BaseValidation<String>,
+    base_validation: BaseValidation<T>,
 }
 
-impl DateRequest {
-    pub(crate) fn new(iso_date: String, base_validation: BaseValidation<String>) -> Option<Self> {
+impl<T: AsRef<str> + Clone> DateRequest<T>{
+    pub(crate) fn new(iso_date: T, base_validation: BaseValidation<T>) -> Option<Self> {
         if Utc::now()
         .naive_local()
         .date()
         .format("%Y-%m-%d")
         .to_string()
-        == iso_date {
+        == iso_date.as_ref() {
             return None;
         };
-        let date_picker_client_state = format!("{{\"enabled\":true,\"emptyMessage\":\"\",\"validationText\":\"{0}-00-00-00\",\"valueAsString\":\"{0}-00-00-00\",\"minDateStr\":\"1980-01-01-00-00-00\",\"maxDateStr\":\"2099-12-31-00-00-00\",\"lastSetTextBoxValue\":\"{0}\"}}", &iso_date);
+        let date_picker_client_state = format!("{{\"enabled\":true,\"emptyMessage\":\"\",\"validationText\":\"{0}-00-00-00\",\"valueAsString\":\"{0}-00-00-00\",\"minDateStr\":\"1980-01-01-00-00-00\",\"maxDateStr\":\"2099-12-31-00-00-00\",\"lastSetTextBoxValue\":\"{0}\"}}", iso_date.as_ref());
         Some(Self {
-            RadScriptManager1: "RadAjaxPanel1Panel|DataPicker".to_string(),
-            __EVENStringStringARGEString: "DataPicker".to_string(),
-            __EVENStringARGUMENString: "".to_string(),
+            RadScriptManager1: "RadAjaxPanel1Panel|DataPicker",
+            __EVENTTARGET: "DataPicker",
+            __EVENTARGUMENT: "",
             DataPicker: iso_date.clone(),
             DataPicker_dateInput: iso_date,
-            DataPicker_ClientState: "".to_string(),
+            DataPicker_ClientState: "",
             DataPicker_dateInput_ClientState: date_picker_client_state,
-            __ASYNCPOST: "true".to_string(),
-            RadAJAXControlID:"RadAjaxPanel1".to_string(),
+            __ASYNCPOST: "true",
+            RadAJAXControlID:"RadAjaxPanel1",
             base_validation,
         })
     }

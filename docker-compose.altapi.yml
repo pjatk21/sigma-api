@@ -18,12 +18,13 @@ services:
       # to enable DEBUG and TRACE logging, replace `info` with either `debug` or `trace`
       # https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#examples
       - RUST_LOG=info
+      - TIMEOUT_MILIS=250
     depends_on:
       - bridge
   bridge:
     image: ghcr.io/pjatk21/alt-scrap:sigma-bridge
     environment:
-      - SCRAPPER_NAME=(bridged) rusty
+      - SCRAPPER_NAME=Rafcio (bridged Rust)
       - ALTAPI_GATEWAY=ws://altapi:4010/
     entrypoint: yarn start:bridge
     # volumes:

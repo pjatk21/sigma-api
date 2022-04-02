@@ -1,6 +1,7 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::error::Error;
 
+use std::time::Duration;
 use reqwest::Client;
 
 use crate::loops::parser_loop::ParserLoop;
@@ -18,6 +19,7 @@ pub(crate) struct Env {
     pub MONGO_INITDB_DATABASE: &'static str,
     pub MONGO_INITDB_COLLECTION: &'static str,
     pub MANAGER_URL: &'static str,
+    pub TIMEOUT_MILIS: &'static str,
 }
 
 impl Env {
@@ -32,6 +34,7 @@ impl Env {
             MONGO_INITDB_DATABASE: "MONGO_INITDB_DATABASE",
             MONGO_INITDB_COLLECTION: "MONGO_INITDB_COLLECTION",
             MANAGER_URL: "MANAGER_URL",
+            TIMEOUT_MILIS: "TIMEOUT_MILIS",
         }
     }
 }
@@ -39,6 +42,7 @@ impl Env {
 pub(crate) struct Config {
     client_http_client: reqwest::Client,
     url: &'static str,
+    timeout: Duration,
 }
 
 impl Config {
@@ -46,6 +50,7 @@ impl Config {
         Ok(Self {
             client_http_client: Config::init_pjatk_client().await?,
             url: "https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx",
+            timeout: Config::init_timeout()?
         })
     }
     pub fn get_http_client(&self) -> &Client {
@@ -54,8 +59,14 @@ impl Config {
     pub fn get_url(&self) -> &'static str {
         self.url
     }
+    pub fn get_timeout(&self) -> Duration {
+        self.timeout
+    }
     async fn init_pjatk_client() -> Result<reqwest::Client, reqwest::Error> {
         let headers = ParserLoop::<&str>::get_base_headers().expect("Default headers fail!");
         reqwest::Client::builder().default_headers(headers).build()
+    }
+    fn init_timeout() -> Result<Duration, Box<dyn Error>> {
+        Ok(Duration::from_millis(std::env::var(ENVIROMENT.TIMEOUT_MILIS)?.parse()?))
     }
 }
