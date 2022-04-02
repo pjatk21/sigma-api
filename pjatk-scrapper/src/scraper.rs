@@ -1,7 +1,7 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use regex::Regex;
 use reqwest::IntoUrl;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::{Debug, Display};
 
@@ -12,6 +12,9 @@ use tracing::{error, info, trace};
 
 use crate::api::HypervisorCommand;
 use crate::loops::parser_loop::ParserLoop;
+use crate::request::base_validation::BaseValidation;
+use crate::request::date_request::DateRequest;
+use crate::request::entry_request::EntryRequest;
 use lazy_static::lazy_static;
 
 #[derive(Debug, Clone)]
@@ -27,11 +30,11 @@ pub(crate) async fn parse_timetable_day(
     http_client: &reqwest::Client,
     date: String,
     tx: Sender<EntryToSend>,
-    base_validation: &mut HashMap<&'static str, String>,
+    base_validation: &mut BaseValidation<String>,
     url: String,
 ) -> Result<(), Box<dyn Error>> {
     let date_form =
-        ParserLoop::get_date_form(base_validation.clone(), date.clone()).await;
+        DateRequest::new(date.clone(),base_validation.clone());
     let response = http_client
         .post(url.clone())
         .form(&date_form)
@@ -89,14 +92,14 @@ pub(crate) async fn parse_timetable_entry<T,R>(
     date: T,
     tx: Sender<EntryToSend>,
     timeout: u64,
-    base_validation: &mut HashMap<&'static str, String>,
+    base_validation: &mut BaseValidation<String>,
     url: T,
 ) -> Result<(), Box<dyn Error>>
 where
     T: AsRef<str> + Debug + Display + IntoUrl,
     R: AsRef<str> + IntoUrl + Debug + Copy
 {
-    let timetable_entry_form = ParserLoop::get_parse_form(html_id, base_validation.clone());
+    let timetable_entry_form = EntryRequest::new(html_id.as_ref().to_string(), base_validation.clone());
     let response = http_client
         .post(url)
         .form(&timetable_entry_form)
