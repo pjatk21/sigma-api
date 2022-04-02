@@ -1,46 +1,36 @@
-version: '3.9'
+version: '3'
+
 services:
-  mongodb:
-    image: mongo:latest
-    env_file:
-      - .env
+  altapi:
+    image: ghcr.io/pjatk21/altapi:main
     ports:
-      - ${MONGO_PORT}:${MONGO_PORT}
-    volumes:
-      - ./mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-
-  database-viewer:
-    image: mongo-express
-    depends_on:
-      - mongodb
-    env_file:
-      - .env
+      - 4000:4000
     environment:
-      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
-    ports:
-      - "8081:8081"
-
-  pjatk-api:
-    build:
-      dockerfile: pjatk-api/debug.Dockerfile
-      context: .
-    ports:
-      - ${PJATK_API_PORT}:${PJATK_API_PORT}
-    env_file:
-      - .env
+      MONGO_URL: 'mongodb://database/altapi'
     depends_on:
-      - mongodb
-
-  pjatk-scraper:
+      - database
+  scrapper:
     build: 
-      dockerfile: pjatk-schedule/debug.Dockerfile
+      dockerfile: pjatk-scrapper/debug.Dockerfile
       context: .
-    ports:
-      - ${PJATK_SCRAPPER_PORT}:${PJATK_SCRAPPER_PORT}
-    env_file:
-      - .env
+    environment:
+      - MANAGER_URL=ws://bridge:9090 
+      # to enable DEBUG and TRACE logging, replace `info` with either `debug` or `trace`
+      # https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#examples
+      - RUST_LOG=info
+      - TIMEOUT_MILIS=5000
     depends_on:
-      - mongodb
+      - bridge
+  bridge:
+    image: ghcr.io/pjatk21/alt-scrap:sigma-bridge
+    environment:
+      - SCRAPPER_NAME=Rafcio (bridged Rust)
+      - ALTAPI_GATEWAY=ws://altapi:4010/
+    entrypoint: yarn start:bridge
+    # volumes:
+    #   - './altapi/passport:/app/passport'
+    depends_on:
+      - altapi
+  database:
+    image: mongo:latest
     restart: unless-stopped
