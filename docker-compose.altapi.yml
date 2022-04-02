@@ -18,7 +18,7 @@ services:
       # to enable DEBUG and TRACE logging, replace `info` with either `debug` or `trace`
       # https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#examples
       - RUST_LOG=info
-      - TIMEOUT_MILIS=250
+      - TIMEOUT_MILIS=5000
     depends_on:
       - bridge
   bridge:
