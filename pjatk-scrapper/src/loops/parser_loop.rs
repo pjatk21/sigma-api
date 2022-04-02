@@ -4,7 +4,6 @@ use std::{error::Error, time::Duration};
 use crate::{scraper::{parse_timetable_day, EntryToSend}, request::base_validation::BaseValidation};
 use chrono::DateTime;
 use crossbeam::utils::Backoff;
-use futures::TryFutureExt;
 use kuchiki::traits::TendrilSink;
 use reqwest::{header::*, Client};
 use tokio::sync::broadcast::{error::RecvError, Sender};
@@ -59,6 +58,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
             match entry_result {
                 Ok(entry) => match entry {
                     EntryToSend::HypervisorCommand(hypervisor_command) => {
+                        let span = info_span!("Parsing entries");
                         let date = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil)
                             .expect("Bad DateTime format until!");
                         let date_str = date.format("%Y-%m-%d").to_string();
@@ -69,21 +69,16 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
                             &mut self.base_validation,
                             self.url.as_ref().to_string(),
                         )
-                        .and_then(|_| async {
-                            let span = info_span!("Parsing entries");
-                            span.in_scope(|| {
-                                info!("Scrapping ended!: {}", date);
-                            });
-
-                            self.tx
-                                .send(EntryToSend::HypervisorFinish("finished"))
-                                .expect("`finish`-ing failed!");                                
-                            info!("Sleeping for {} miliseconds...", self.timeout.as_millis());
-                            tokio::time::sleep(self.timeout).await;
-                            Ok(())
-                        })
                         .await
                         .expect("Parsing failed!");
+                        span.in_scope(|| {
+                            info!("Scrapping ended!: {}", date);
+                        });
+                        self.tx
+                            .send(EntryToSend::HypervisorFinish("finished"))
+                            .expect("`finish`-ing failed!");                                
+                        info!("Sleeping for {} miliseconds...", self.timeout.as_millis());
+                        tokio::time::sleep(self.timeout).await;
                     }
                     EntryToSend::Quit => {
                         let span = info_span!("Parsing entries");
