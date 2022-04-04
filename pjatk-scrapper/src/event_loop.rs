@@ -43,7 +43,6 @@ impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
         ));
         tokio::spawn(async move {
             tokio::signal::ctrl_c().await.unwrap();
-            tx.send(EntryToSend::Quit);
             abort_handle.abort();
             std::process::exit(0);
         });
