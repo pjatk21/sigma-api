@@ -4,6 +4,8 @@ use std::time::Duration;
 use crate::loops::parser_loop::ParserLoop;
 use crate::loops::{receiver_loop::ReceiverLoop, sender_loop::SenderLoop};
 
+
+
 use futures::stream::{SplitSink, SplitStream};
 use reqwest::IntoUrl;
 use tokio::{net::TcpStream, sync::broadcast::Sender};
@@ -29,15 +31,22 @@ impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
         Ok(Self {
             receiver: ReceiverLoop::new(tx.clone(), stream),
             sender: SenderLoop::new(tx.subscribe(), sink),
-            parser: ParserLoop::new(tx, client, url,timeout).await?,
+            parser: ParserLoop::new(tx.clone(), client, url,timeout).await?,
         })
     }
 
-    pub(crate) async fn start(&mut self) {
-        futures::join!(
+    pub(crate) async fn start(&mut self, tx: Sender<EntryToSend>) {
+        let (future, abort_handle) = futures::future::abortable(futures::future::join3(
             self.receiver.start(),
             self.sender.start(),
             self.parser.start()
-        );
+        ));
+        tokio::spawn(async move {
+            tokio::signal::ctrl_c().await.unwrap();
+            tx.send(EntryToSend::Quit);
+            abort_handle.abort();
+            std::process::exit(0);
+        });
+        future.await;
     }
 }
