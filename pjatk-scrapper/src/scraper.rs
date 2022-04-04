@@ -1,4 +1,5 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
+use futures::StreamExt;
 use regex::Regex;
 use reqwest::IntoUrl;
 use std::collections::HashSet;
@@ -8,7 +9,7 @@ use std::fmt::{Debug, Display};
 use timetable::altapi_timetable::UploadEntry;
 use tokio::sync::broadcast::Sender;
 
-use tracing::{error, info, trace};
+use tracing::{error, info};
 
 use crate::api::HypervisorCommand;
 use crate::loops::parser_loop::ParserLoop;
@@ -68,20 +69,28 @@ pub(crate) async fn parse_timetable_day(
     info!("Found {} timetable entries", count);
 
     // Normal scrapping (5-sec. timeout)
-    for (index, html_id) in good_elements.iter().enumerate() {
+    let date_ref = date.as_str();
+    let url_ref = url.as_str();
+    let tx_ref = &tx;
+    let base_validation_ref = &base_validation;
+
+    // Normal scrapping (5-sec. timeout)
+
+    futures::stream::iter(good_elements).for_each_concurrent(16,|html_id| async move {
         parse_timetable_entry(
-            *html_id,
+            html_id,
             http_client,
-            date.clone(),
-            tx.clone(),
+            date_ref,
+            tx_ref,
             5,
-            base_validation,
-            url.clone(),
+            base_validation_ref,
+            url_ref,
         )
         .await
-        .unwrap_or_else(|err| panic!("Failed at: {} - {}\n{:#?}", index, html_id, err));
-        trace!("{}", index);
-    }
+        .unwrap_or_else(|err| panic!("Failed at: {}\n{:#?}", html_id, err));
+    }).await;
+
+    
     Ok(())
 }
 
@@ -90,9 +99,9 @@ pub(crate) async fn parse_timetable_entry<T,R>(
     html_id: R,
     http_client: &reqwest::Client,
     date: T,
-    tx: Sender<EntryToSend>,
+    tx: &Sender<EntryToSend>,
     timeout: u64,
-    base_validation: &mut BaseValidation<String>,
+    base_validation: &BaseValidation<String>,
     url: T,
 ) -> Result<(), Box<dyn Error>>
 where
