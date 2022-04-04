@@ -75,7 +75,7 @@ impl<'a> SenderLoop<'a> {
                         span.in_scope(|| {
                             info!("Closing scraper thread!");
                         });
-                        std::process::exit(0);
+                        break;
                     }
                     _ => {
                         backoff.snooze();

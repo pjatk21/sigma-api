@@ -6,8 +6,12 @@ use crate::loops::{receiver_loop::ReceiverLoop, sender_loop::SenderLoop};
 
 
 
+
+use futures::future::select;
+use futures::pin_mut;
 use futures::stream::{SplitSink, SplitStream};
 use reqwest::IntoUrl;
+use tokio::signal::unix::SignalKind;
 use tokio::{net::TcpStream, sync::broadcast::Sender};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
@@ -36,16 +40,27 @@ impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
     }
 
     pub(crate) async fn start(&mut self, tx: Sender<EntryToSend>) {
-        let (future, abort_handle) = futures::future::abortable(futures::future::join3(
-            self.receiver.start(),
-            self.sender.start(),
-            self.parser.start()
-        ));
-        tokio::spawn(async move {
-            tokio::signal::ctrl_c().await.unwrap();
-            abort_handle.abort();
-            std::process::exit(0);
-        });
-        future.await;
+        let receiver = self.receiver.start();
+        let sender = self.sender.start();
+        let parser = self.parser.start();
+        let shutdown = async {
+            loop { 
+                match tokio::signal::unix::signal(SignalKind::terminate()).unwrap().recv().await {
+                    Some(_) => {
+                        tx.send(EntryToSend::Quit);
+                    },
+                    None => {
+                        tokio::time::sleep(Duration::from_nanos(250)).await;
+                    }
+                }
+            }
+        };
+
+        pin_mut!(receiver);
+        pin_mut!(sender);
+        pin_mut!(parser);
+        pin_mut!(shutdown);
+
+        select(select(receiver,sender),select(parser,shutdown)).await;
     }
 }
