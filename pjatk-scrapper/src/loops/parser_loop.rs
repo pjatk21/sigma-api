@@ -6,7 +6,7 @@ use chrono::DateTime;
 use crossbeam::utils::Backoff;
 use kuchiki::traits::TendrilSink;
 use reqwest::{header::*, Client};
-use tokio::sync::broadcast::{error::RecvError, Sender};
+use tokio::{sync::broadcast::{error::RecvError, Sender}};
 use tracing::{info, info_span, warn};
 
 pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
@@ -15,6 +15,7 @@ pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
     base_validation: BaseValidation<String>,
     url: T,
     timeout: Duration,
+    instant: tokio::time::Instant,
 }
 
 impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
@@ -24,15 +25,18 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
         url: T,
         timeout: Duration,
     ) -> Result<ParserLoop<'a, T>, Box<dyn Error>> {
+        let instant = tokio::time::Instant::now();
         let (base_validation, _) =
             ParserLoop::<&str>::get_base_validation_and_html(url.as_ref().to_string(), client)
                 .await?;
+        info!("Init: {} sec.", instant.elapsed().as_secs());
         Ok(Self {
             tx,
             client,
             base_validation,
             url,
-            timeout
+            timeout,
+            instant: tokio::time::Instant::now(),
         })
     }
     pub(crate) fn get_base_headers() -> Result<HeaderMap, Box<dyn Error>> {
@@ -62,7 +66,8 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
                         let date = DateTime::parse_from_rfc3339(&hypervisor_command.scrapUntil)
                             .expect("Bad DateTime format until!");
                         let date_str = date.format("%Y-%m-%d").to_string();
-                        parse_timetable_day(
+                        self.instant = tokio::time::Instant::now();
+                        let number = parse_timetable_day(
                             self.client,
                             date_str,
                             self.tx.clone(),
@@ -71,8 +76,10 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
                         )
                         .await
                         .expect("Parsing failed!");
+                        let duration = &self.instant.elapsed().as_secs_f32();
+                        let rate = if number != 0 {number as f32 / duration} else {0.};
                         span.in_scope(|| {
-                            info!("Scrapping ended!: {}", date);
+                            info!("Scrapping ended!: {} in ~{} sec. ({} req/s)", date, &self.instant.elapsed().as_secs(), rate);
                         });
                         self.tx
                             .send(EntryToSend::HypervisorFinish("finished"))

@@ -43,6 +43,7 @@ impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
         let receiver = self.receiver.start();
         let sender = self.sender.start();
         let parser = self.parser.start();
+        // TODO: Split shutdown thread to seperate struct
         let shutdown = async {
             loop { 
                 match tokio::signal::unix::signal(SignalKind::terminate()).unwrap().recv().await {

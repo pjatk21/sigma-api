@@ -33,7 +33,7 @@ pub(crate) async fn parse_timetable_day(
     tx: Sender<EntryToSend>,
     base_validation: &mut BaseValidation<String>,
     url: String,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<usize, Box<dyn Error>> {
     let date_form =
         DateRequest::new(date.clone(),base_validation.clone());
     let response = http_client
@@ -91,7 +91,7 @@ pub(crate) async fn parse_timetable_day(
     }).await;
 
     
-    Ok(())
+    Ok(count)
 }
 
 #[tracing::instrument(skip(http_client,tx,base_validation))]
