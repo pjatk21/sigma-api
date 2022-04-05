@@ -26,7 +26,7 @@ pub enum EntryToSend {
     Quit,
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(base_validation,tx,http_client))]
 pub(crate) async fn parse_timetable_day(
     http_client: &reqwest::Client,
     date: String,
@@ -94,7 +94,7 @@ pub(crate) async fn parse_timetable_day(
     Ok(())
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(http_client,tx,base_validation))]
 pub(crate) async fn parse_timetable_entry<T,R>(
     html_id: R,
     http_client: &reqwest::Client,

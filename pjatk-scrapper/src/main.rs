@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
-        .event_format(format().pretty())
+        .event_format(format().compact())
         .init();
 
     let (tx, _) = tokio::sync::broadcast::channel::<EntryToSend>(500);
