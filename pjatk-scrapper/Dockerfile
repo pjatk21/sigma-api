@@ -1,7 +1,7 @@
 FROM rust:slim as chef
 
-RUN rustup toolchain install nightly-2022-03-22
-RUN rustup default nightly-2022-03-22
+RUN rustup toolchain install stable
+RUN rustup default stable
 
 RUN apt-get update -y && apt-get install build-essential pkg-config lld clang -y && rm -rf /var/lib/apt/lists/*
 
