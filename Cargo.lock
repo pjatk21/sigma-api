@@ -2188,9 +2188,9 @@ checksum = "8eaa81235c7058867fa8c0e7314f33dcce9c215f535d1913822a2b3f5e289f3c"
 
 [[package]]
 name = "thirtyfour"
-version = "0.28.2"
+version = "0.28.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ce96951c9b4d30773ee86fcec090cf5b36f4b6c0637af2caa0a299704cb4568"
+checksum = "d8a3dc39b4cd4f6512fa5c663a697c40d297263b7db0a179bd2ad80cb0e92a5f"
 dependencies = [
  "async-trait",
  "base64",

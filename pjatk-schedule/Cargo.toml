@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-thirtyfour = { version = "0.28.2", default-features = false, features = [
+thirtyfour = { version = "0.28.3", default-features = false, features = [
     "tokio-runtime",
     "reqwest-rustls-tls-webpki-roots",
 ] }
