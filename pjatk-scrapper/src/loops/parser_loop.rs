@@ -6,11 +6,12 @@ use chrono::DateTime;
 use crossbeam::utils::Backoff;
 use kuchiki::traits::TendrilSink;
 use reqwest::{header::*, Client};
-use tokio::{sync::broadcast::{error::RecvError, Sender}};
-use tracing::{info, info_span, warn};
+use tokio::{sync::{broadcast::{error::RecvError, Sender, Receiver}}};
+use tracing::{info, info_span, warn, trace};
 
 pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
     tx: Sender<EntryToSend>,
+    rx: Receiver<EntryToSend>,
     client: &'a reqwest::Client,
     base_validation: BaseValidation<String>,
     url: T,
@@ -32,6 +33,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
             ParserLoop::<&str>::get_base_validation_and_html(url.as_ref().to_string(), client)
                 .await?;
         info!("Init: {} sec.", instant.elapsed().as_secs());
+        let rx = tx.subscribe();
         Ok(Self {
             tx,
             client,
@@ -39,7 +41,8 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
             url,
             timeout,
             instant: tokio::time::Instant::now(),
-            max_concurrent
+            max_concurrent,
+            rx,
         })
     }
     pub(crate) fn get_base_headers() -> Result<HeaderMap, Box<dyn Error>> {
@@ -58,9 +61,9 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
     }
 
     pub(crate) async fn start(&mut self) {
-        let mut rx = self.tx.subscribe();
         loop {
-            let entry_result = rx.recv().await;
+            let entry_result = self.rx.recv().await;
+            trace!("Message received");
             let backoff = Backoff::new();
             match entry_result {
                 Ok(entry) => match entry {
