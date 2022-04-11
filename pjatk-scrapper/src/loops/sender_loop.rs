@@ -28,6 +28,7 @@ impl<'a> SenderLoop<'a> {
         let backoff = Backoff::new();
         loop {
             let entry_result = self.rx.recv().await;
+            trace!("Message received");
             match entry_result {
                 Ok(entry) => match entry {
                     EntryToSend::Entry(entry) => {

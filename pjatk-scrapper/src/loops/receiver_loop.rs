@@ -4,7 +4,7 @@ use crossbeam::utils::Backoff;
 use futures::{stream::SplitStream, StreamExt};
 use tokio::{net::TcpStream, sync::broadcast::Sender};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
-use tracing::{error, error_span, info, info_span};
+use tracing::{error, error_span, info, info_span, trace};
 
 use crate::{api::HypervisorCommand, scraper::EntryToSend};
 
@@ -24,6 +24,7 @@ impl<'a> ReceiverLoop<'a> {
         let span = info_span!("Receiving WebSocket data");
         let backoff = Backoff::new();
         while let Some(resp) = self.stream.next().await {
+            trace!("Message received!");
             match resp {
                 Ok(msg) => match msg {
                     Message::Text(json_str) => {
