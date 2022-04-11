@@ -33,6 +33,7 @@ pub(crate) async fn parse_timetable_day(
     tx: Sender<EntryToSend>,
     base_validation: &mut BaseValidation<String>,
     url: String,
+    max_concurrent: usize,
 ) -> Result<usize, Box<dyn Error>> {
     let date_form =
         DateRequest::new(date.clone(),base_validation.clone());
@@ -76,7 +77,7 @@ pub(crate) async fn parse_timetable_day(
 
     // Normal scrapping (5-sec. timeout)
 
-    futures::stream::iter(good_elements).for_each_concurrent(16,|html_id| async move {
+    futures::stream::iter(good_elements).for_each_concurrent(max_concurrent,|html_id| async move {
         parse_timetable_entry(
             html_id,
             http_client,

@@ -30,12 +30,13 @@ impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
         sink: &'a mut SplitSink<WebSocketStream<TcpStream>, Message>,
         client: &'a reqwest::Client,
         url: T,
-        timeout: Duration
+        timeout: Duration,
+        max_concurrent: usize,
     ) -> Result<EventLoop<'a, T>, Box<dyn Error>> {
         Ok(Self {
             receiver: ReceiverLoop::new(tx.clone(), stream),
             sender: SenderLoop::new(tx.subscribe(), sink),
-            parser: ParserLoop::new(tx.clone(), client, url,timeout).await?,
+            parser: ParserLoop::new(tx.clone(), client, url,timeout,max_concurrent).await?,
         })
     }
 

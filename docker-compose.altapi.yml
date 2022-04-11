@@ -19,6 +19,8 @@ services:
       # https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#examples
       - RUST_LOG=info
       - TIMEOUT_MILIS=5000
+      # 4 concurrent requests = ~30 req/s
+      - MAX_CONCURRENT_REQUESTS=4
     depends_on:
       - bridge
   bridge:

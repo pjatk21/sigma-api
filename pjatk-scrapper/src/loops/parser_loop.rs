@@ -16,6 +16,7 @@ pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
     url: T,
     timeout: Duration,
     instant: tokio::time::Instant,
+    max_concurrent: usize,
 }
 
 impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
@@ -24,6 +25,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
         client: &'a reqwest::Client,
         url: T,
         timeout: Duration,
+        max_concurrent: usize,
     ) -> Result<ParserLoop<'a, T>, Box<dyn Error>> {
         let instant = tokio::time::Instant::now();
         let (base_validation, _) =
@@ -37,6 +39,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
             url,
             timeout,
             instant: tokio::time::Instant::now(),
+            max_concurrent
         })
     }
     pub(crate) fn get_base_headers() -> Result<HeaderMap, Box<dyn Error>> {
@@ -73,6 +76,7 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
                             self.tx.clone(),
                             &mut self.base_validation,
                             self.url.as_ref().to_string(),
+                            self.max_concurrent
                         )
                         .await
                         .expect("Parsing failed!");

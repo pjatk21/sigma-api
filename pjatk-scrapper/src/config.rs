@@ -20,6 +20,7 @@ pub(crate) struct Env {
     pub MONGO_INITDB_COLLECTION: &'static str,
     pub MANAGER_URL: &'static str,
     pub TIMEOUT_MILIS: &'static str,
+    pub MAX_CONCURRENT_REQUESTS: &'static str,
 }
 
 impl Env {
@@ -35,6 +36,7 @@ impl Env {
             MONGO_INITDB_COLLECTION: "MONGO_INITDB_COLLECTION",
             MANAGER_URL: "MANAGER_URL",
             TIMEOUT_MILIS: "TIMEOUT_MILIS",
+            MAX_CONCURRENT_REQUESTS: "MAX_CONCURRENT_REQUESTS",
         }
     }
 }
@@ -43,6 +45,7 @@ pub(crate) struct Config {
     client_http_client: reqwest::Client,
     url: &'static str,
     timeout: Duration,
+    max_concurrent_requests: usize,
 }
 
 impl Config {
@@ -50,7 +53,8 @@ impl Config {
         Ok(Self {
             client_http_client: Config::init_pjatk_client().await?,
             url: "https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx",
-            timeout: Config::init_timeout()?
+            timeout: Config::init_timeout()?,
+            max_concurrent_requests: Config::init_max_concurrent()?,
         })
     }
     pub fn get_http_client(&self) -> &Client {
@@ -62,11 +66,17 @@ impl Config {
     pub fn get_timeout(&self) -> Duration {
         self.timeout
     }
+    pub fn get_max_concurrent(&self) -> usize {
+        self.max_concurrent_requests
+    }
     async fn init_pjatk_client() -> Result<reqwest::Client, reqwest::Error> {
         let headers = ParserLoop::<&str>::get_base_headers().expect("Default headers fail!");
         reqwest::Client::builder().default_headers(headers).build()
     }
     fn init_timeout() -> Result<Duration, Box<dyn Error>> {
         Ok(Duration::from_millis(std::env::var(ENVIROMENT.TIMEOUT_MILIS)?.parse()?))
+    }
+    fn init_max_concurrent() -> Result<usize, Box<dyn Error>> {
+        Ok(std::env::var(ENVIROMENT.MAX_CONCURRENT_REQUESTS)?.parse()?)
     }
 }
