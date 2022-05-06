@@ -2,7 +2,9 @@ version: '3'
 
 services:
   altapi:
-    image: ghcr.io/pjatk21/altapi:main
+    build:
+      dockerfile: Dockerfile
+      context: alt-api
     ports:
       - 4000:4000
     environment:
@@ -24,11 +26,13 @@ services:
     depends_on:
       - bridge
   bridge:
-    image: ghcr.io/pjatk21/alt-scrap:sigma-bridge
+    build: 
+      dockerfile: Dockerfile
+      context: alt-scrap
     environment:
       - SCRAPPER_NAME=Rafcio (bridged Rust)
       - ALTAPI_GATEWAY=ws://altapi:4010/
-    entrypoint: yarn start:bridge
+    entrypoint: yarn docker.entrypoint.bridge
     # volumes:
     #   - './altapi/passport:/app/passport'
     depends_on:

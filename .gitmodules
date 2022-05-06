@@ -1,0 +1,6 @@
+[submodule "alt-scrap"]
+	path = alt-scrap
+	url = https://github.com/pjatk21/alt-scrap
+[submodule "alt-api"]
+	path = alt-api
+	url = https://github.com/pjatk21/alt-api
