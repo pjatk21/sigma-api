@@ -10,7 +10,7 @@ thirtyfour = { version = "0.28.3", default-features = false, features = [
     "tokio-runtime",
     "reqwest-rustls-tls-webpki-roots",
 ] }
-tokio = { version = "1.18.2", default-features = false, features = [
+tokio = { version = "1.19.2", default-features = false, features = [
     "rt-multi-thread",
     "net",
     "time",
