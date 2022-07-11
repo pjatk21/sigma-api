@@ -4,7 +4,7 @@ use std::{error::Error, time::Duration};
 use kuchiki::traits::TendrilSink;
 use thirtyfour::{
     prelude::{ElementQueryable, ElementWaitable},
-    By, Keys, WebDriver,
+    By, Key, WebDriver,
 };
 use timetable::timetable::TimeTableEntry;
 use tokio::sync::mpsc::UnboundedSender;
@@ -27,9 +27,8 @@ pub(crate) async fn parse_timetable_day(
         .await?;
 
     date_input.click().await?;
-    date_input.send_keys(Keys::Control + "a").await?;
-    date_input.send_keys(date.clone()).await?;
-    date_input.send_keys(Keys::Enter).await?;
+    date_input.send_keys(Key::Control + "a").await?;
+    date_input.send_keys(date.clone() + Key::Enter).await?;
 
     tokio::time::sleep(Duration::from_secs(1)).await;
 

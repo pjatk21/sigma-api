@@ -9,7 +9,7 @@ use poem_openapi::Object;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Object)]
-#[oai(example = "get_mock_entry")]
+#[oai]
 pub struct TimeTableEntry {
     /// Title of entry
     pub(crate) title: Option<String>,

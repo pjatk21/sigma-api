@@ -29,7 +29,7 @@ pub enum SigmaApiResponse<T: Send + Sync + ToJSON + ParseFromJSON, E: Send + ToJ
     InternalError(Json<E>),
 }
 #[derive(Deserialize, Serialize, Debug, Object)]
-#[oai(inline)]
+
 pub struct SigmaApiData<T: Send + Sync + ToJSON + ParseFromJSON> {
     data: T,
 }
@@ -41,7 +41,7 @@ impl<T: Send + Sync + ToJSON + ParseFromJSON> SigmaApiData<T> {
 }
 
 #[derive(Object, Serialize, Deserialize, Debug, Clone)]
-#[oai(inline)]
+
 pub struct SigmaApiError {
     code: u16,
     name: String,
@@ -61,12 +61,9 @@ impl SigmaApiError {
         error!("{:?}", err);
         let err_str = err.to_string();
         let status = err.into_response().status();
-        let cause_err = SigmaApiError::error(
-            status.as_u16(),
-            status.as_str().to_owned(),
-            Some(err_str),
-        )
-        .expect("API error from poem::Error failed!");
+        let cause_err =
+            SigmaApiError::error(status.as_u16(), status.as_str().to_owned(), Some(err_str))
+                .expect("API error from poem::Error failed!");
         Json(cause_err).with_status(status)
     }
 }
