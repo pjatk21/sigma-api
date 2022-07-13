@@ -22,7 +22,7 @@ kuchiki = "0.8.1"
 serde = { version = "1.0.139", features = ["derive"] }
 serde_json = "1.0.82"
 mongodb = "2.2.2"
-poem = { version = "1.3.33", features = ["tower-compat"] }
+poem = { version = "1.3.34", features = ["tower-compat"] }
 poem-openapi = { version = "2.0.3", features = ["swagger-ui", "chrono"] }
 chrono = { version = "0.4.19", features = ["serde"] }
 futures = "0.3.21"
