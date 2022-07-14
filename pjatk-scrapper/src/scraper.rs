@@ -69,7 +69,6 @@ pub(crate) async fn parse_timetable_day(
     let count = good_elements.len();
     info!("Found {} timetable entries", count);
 
-    // Normal scrapping (5-sec. timeout)
     let date_ref = date.as_str();
     let url_ref = url.as_str();
     let tx_ref = &tx;

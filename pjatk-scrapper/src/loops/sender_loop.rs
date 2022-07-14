@@ -1,3 +1,4 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::time::Duration;
 
 use crossbeam::utils::Backoff;
@@ -7,7 +8,7 @@ use tokio::{
     sync::broadcast::{error::RecvError, Receiver},
 };
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
-use tracing::{error, error_span, info, info_span, warn, trace};
+use tracing::{error, error_span, info, info_span, trace, warn};
 
 use crate::scraper::EntryToSend;
 

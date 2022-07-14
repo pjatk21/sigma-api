@@ -1,13 +1,17 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use reqwest::IntoUrl;
 use std::{error::Error, time::Duration};
 
-use crate::{scraper::{parse_timetable_day, EntryToSend}, request::base_validation::BaseValidation};
+use crate::{
+    request::base_validation::BaseValidation,
+    scraper::{parse_timetable_day, EntryToSend},
+};
 use chrono::DateTime;
 use crossbeam::utils::Backoff;
 use kuchiki::traits::TendrilSink;
 use reqwest::{header::*, Client};
-use tokio::{sync::{broadcast::{error::RecvError, Sender, Receiver}}};
-use tracing::{info, info_span, warn, trace};
+use tokio::sync::broadcast::{error::RecvError, Receiver, Sender};
+use tracing::{info, info_span, trace, warn};
 
 pub(crate) struct ParserLoop<'a, T: AsRef<str>> {
     tx: Sender<EntryToSend>,
@@ -79,18 +83,27 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
                             self.tx.clone(),
                             &mut self.base_validation,
                             self.url.as_ref().to_string(),
-                            self.max_concurrent
+                            self.max_concurrent,
                         )
                         .await
                         .expect("Parsing failed!");
                         let duration = &self.instant.elapsed().as_secs_f32();
-                        let rate = if number != 0 {number as f32 / duration} else {0.};
+                        let rate = if number != 0 {
+                            number as f32 / duration
+                        } else {
+                            0.
+                        };
                         span.in_scope(|| {
-                            info!("Scrapping ended!: {} in ~{} sec. ({} req/s)", date, &self.instant.elapsed().as_secs(), rate);
+                            info!(
+                                "Scrapping ended!: {} in ~{} sec. ({} req/s)",
+                                date,
+                                &self.instant.elapsed().as_secs(),
+                                rate
+                            );
                         });
                         self.tx
                             .send(EntryToSend::HypervisorFinish("finished"))
-                            .expect("`finish`-ing failed!");                                
+                            .expect("`finish`-ing failed!");
                         info!("Sleeping for {} miliseconds...", self.timeout.as_millis());
                         tokio::time::sleep(self.timeout).await;
                     }
@@ -122,7 +135,10 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
     pub(crate) async fn get_base_validation_and_html<R>(
         url: R,
         client: &Client,
-    ) -> Result<(BaseValidation<String>, String), Box<dyn Error>> where R: AsRef<str> + IntoUrl {
+    ) -> Result<(BaseValidation<String>, String), Box<dyn Error>>
+    where
+        R: AsRef<str> + IntoUrl,
+    {
         let response = client
             .get(url)
             .headers(ParserLoop::<String>::get_base_headers()?)
@@ -130,13 +146,10 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
             .await?;
         let bytes = response.bytes().await?;
         let html_string = std::str::from_utf8(bytes.as_ref())?;
-        let mut temp = BaseValidation::new("".to_string(),"".to_string(),"".to_string());
-        ParserLoop::<&str>::update_base_validation_and_give_html_full(
-            html_string,
-            &mut temp,
-        )
-        .await
-        .expect("Updating failed!");
+        let mut temp = BaseValidation::new("".to_string(), "".to_string(), "".to_string());
+        ParserLoop::<&str>::update_base_validation_and_give_html_full(html_string, &mut temp)
+            .await
+            .expect("Updating failed!");
         Ok((temp, html_string.to_string()))
     }
 
@@ -158,14 +171,15 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
         let event_validation_attributes = event_validation_dom.attributes.borrow();
         let event_validation = event_validation_attributes.get("value").unwrap();
 
-        base_validation.update(view_state.to_string(),view_state_generator.to_string(),event_validation.to_string());
+        base_validation.update(
+            view_state.to_string(),
+            view_state_generator.to_string(),
+            event_validation.to_string(),
+        );
         Ok(html_string)
     }
 
-    pub(crate) async fn give_html_delta(
-        html: T,
-        type_of: T,
-    ) -> String {
+    pub(crate) async fn give_html_delta(html: T, type_of: T) -> String {
         let splitted = html.as_ref().split('|');
 
         let position_html = splitted.clone().position(|x| x == type_of.as_ref());
@@ -173,6 +187,5 @@ impl<'a, T: AsRef<str>> ParserLoop<'a, T> {
         let splitted_vec: Vec<&str> = splitted.collect();
 
         splitted_vec[position_html.unwrap() + 1].to_string()
-        
     }
 }

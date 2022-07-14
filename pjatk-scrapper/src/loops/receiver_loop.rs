@@ -1,3 +1,4 @@
+#![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::time::Duration;
 
 use crossbeam::utils::Backoff;
