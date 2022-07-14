@@ -1,5 +1,5 @@
 FROM rust:slim as chef
-# nightly-2022-03-22
+
 RUN rustup toolchain install stable
 RUN rustup default stable
 
