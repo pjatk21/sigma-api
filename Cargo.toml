@@ -1,2 +1,2 @@
 [workspace]
-members = ["pjatk-scrapper","timetable"]
+members = ["pjatk-scrapper", "timetable", "pjatk-api", "api-utils"]

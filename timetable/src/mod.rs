@@ -1,2 +1,2 @@
 pub mod altapi_timetable;
-mod timetable;
+pub mod timetable;
