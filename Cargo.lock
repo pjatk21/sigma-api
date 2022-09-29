@@ -1454,9 +1454,9 @@ dependencies = [
 
 [[package]]
 name = "poem"
-version = "1.3.44"
+version = "1.3.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a94ff00c513bee5c32ecbbf982f470e7e51e913330737dc40522ddc298954395"
+checksum = "2992ba72908e36200671c0f3a692992ced894b3b2bbe2b2dc6dfbffea6e2c85a"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1491,9 +1491,9 @@ dependencies = [
 
 [[package]]
 name = "poem-derive"
-version = "1.3.44"
+version = "1.3.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6df2d9d11153c1d59c56d25601db7cbe37272116e8014f949c8adf108ae83083"
+checksum = "9f535d4331a22610b98ca48f98bae9bda0c654da89b9ae10a1830fa9edfd8f36"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
