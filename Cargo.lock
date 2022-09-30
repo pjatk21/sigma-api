@@ -1503,9 +1503,9 @@ dependencies = [
 
 [[package]]
 name = "poem-openapi"
-version = "2.0.14"
+version = "2.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8893d581431624fd7a7322869af2cebb8bf07a57dad77d93c0600b562450046a"
+checksum = "fcac9ad30a6cdbde735563368fb01c39d9c8bf2f0fa0cba22bd47720145407e5"
 dependencies = [
  "base64",
  "bytes",
@@ -1528,9 +1528,9 @@ dependencies = [
 
 [[package]]
 name = "poem-openapi-derive"
-version = "2.0.14"
+version = "2.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d72dd50cb371e5a00a7170a87cafbc83ff3bdcc83082992b5b522cd8e053a95b"
+checksum = "51635f373e828c79965a185ed6d7e8ca0153599daf100302587f50d810e4917e"
 dependencies = [
  "darling 0.14.1",
  "http",
