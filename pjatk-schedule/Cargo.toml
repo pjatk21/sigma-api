@@ -9,7 +9,7 @@ edition = "2021"
 thirtyfour = { version = "0.29.6", default-features = false, features = [
     "rusttls-tls",
 ] }
-tokio = { version = "1.22.0", default-features = false, features = [
+tokio = { version = "1.25.0", default-features = false, features = [
     "rt-multi-thread",
     "net",
     "time",
