@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                     EntryToSend::Quit => {
                         client
-                            .close()
+                            .close_window()
                             .await
                             .expect("Error closing browser! Restart GeckoDriver Docker container!");
                         break;

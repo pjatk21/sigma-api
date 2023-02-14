@@ -16,15 +16,12 @@ pub(crate) enum EntryToSend {
     Quit,
 }
 
-#[tracing::instrument]
 pub(crate) async fn parse_timetable_day(
     web_driver: &WebDriver,
     date: String,
     tx: UnboundedSender<EntryToSend>,
 ) -> Result<(), Box<dyn Error>> {
-    let date_input = web_driver
-        .find_element(By::Id("DataPicker_dateInput"))
-        .await?;
+    let date_input = web_driver.find(By::Id("DataPicker_dateInput")).await?;
 
     date_input.click().await?;
     date_input.send_keys(Key::Control + "a").await?;
@@ -32,8 +29,8 @@ pub(crate) async fn parse_timetable_day(
 
     tokio::time::sleep(Duration::from_secs(1)).await;
 
-    let table = web_driver.find_element(By::Id("ZajeciaTable")).await?;
-    let good_elements = table.find_elements(By::Css("tbody td[id*=\";\"]")).await?;
+    let table = web_driver.find(By::Id("ZajeciaTable")).await?;
+    let good_elements = table.find_all(By::Css("tbody td[id*=\";\"]")).await?;
 
     let count = good_elements.len();
     info!("Found {} timetable entries", count);

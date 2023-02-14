@@ -82,7 +82,7 @@ impl Config {
         caps.set_page_load_strategy(PageLoadStrategy::None)?;
         let client = WebDriver::new("http://geckodriver:4444", caps).await?;
         client
-            .get("https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx")
+            .goto("https://planzajec.pjwstk.edu.pl/PlanOgolny3.aspx")
             .await?;
         Ok(client)
     }
