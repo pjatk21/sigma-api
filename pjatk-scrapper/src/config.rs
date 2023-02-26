@@ -1,8 +1,8 @@
 #![deny(clippy::perf, clippy::complexity, clippy::style, unused_imports)]
 use std::error::Error;
 
-use std::time::Duration;
 use reqwest::Client;
+use std::time::Duration;
 
 use crate::loops::parser_loop::ParserLoop;
 
@@ -74,7 +74,9 @@ impl Config {
         reqwest::Client::builder().default_headers(headers).build()
     }
     fn init_timeout() -> Result<Duration, Box<dyn Error>> {
-        Ok(Duration::from_millis(std::env::var(ENVIROMENT.TIMEOUT_MILIS)?.parse()?))
+        Ok(Duration::from_millis(
+            std::env::var(ENVIROMENT.TIMEOUT_MILIS)?.parse()?,
+        ))
     }
     fn init_max_concurrent() -> Result<usize, Box<dyn Error>> {
         Ok(std::env::var(ENVIROMENT.MAX_CONCURRENT_REQUESTS)?.parse()?)

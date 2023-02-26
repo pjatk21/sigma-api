@@ -9,7 +9,7 @@ use futures::future::select;
 use futures::pin_mut;
 use futures::stream::{SplitSink, SplitStream};
 use reqwest::IntoUrl;
-use tokio::signal::unix::SignalKind;
+
 use tokio::{net::TcpStream, sync::broadcast::Sender};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
@@ -45,11 +45,7 @@ impl<'a, T: AsRef<str> + IntoUrl> EventLoop<'a, T> {
         // TODO: Split shutdown thread to seperate struct
         let shutdown = async {
             loop {
-                match tokio::signal::unix::signal(SignalKind::terminate())
-                    .unwrap()
-                    .recv()
-                    .await
-                {
+                match tokio::signal::ctrl_c().await.ok() {
                     Some(_) => {
                         tx.send(EntryToSend::Quit);
                     }
